@@ -34,7 +34,7 @@ jobs:
           pip install pip-audit
           pip install -e services/reconstruction -e services/api -e services/worker
           pip-audit --skip-editable --progress-spinner off
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with: { version: 12.14.0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
