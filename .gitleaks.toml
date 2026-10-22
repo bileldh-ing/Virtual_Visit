@@ -1,0 +1,7 @@
+title = "roomscape gitleaks config"
+[extend]
+useDefault = true
+[allowlist]
+description = "Documented development-only placeholders"
+regexes = ['''dev-only-secret-key-change-me-0123456789''', '''test-secret-key-0123456789abcdef''', '''ci-e2e-secret-key-0123456789abcdef''', '''roomscape-dev-secret''', '''whsec_test_secret''']
+paths = ['''tests/fixtures/.*''', '''apps/web/pnpm-lock\.yaml''']

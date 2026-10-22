@@ -17,8 +17,17 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import current_user, load_project, require_org_role
 from ..errors import APIError, not_found
-from ..models import (CaptureReport, DeletionRequest, ImageQualityResult, Project, ReconstructionJob, ShareLink,
-                      Subscription, Upload, User)
+from ..models import (
+    CaptureReport,
+    DeletionRequest,
+    ImageQualityResult,
+    Project,
+    ReconstructionJob,
+    ShareLink,
+    Subscription,
+    Upload,
+    User,
+)
 from ..plans import plan
 from ..ratelimit import hit
 from ..signing import file_url

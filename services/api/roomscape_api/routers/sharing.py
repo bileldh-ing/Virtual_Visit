@@ -16,9 +16,9 @@ from sqlalchemy.orm import Session
 from .. import audit
 from ..config import get_settings
 from ..db import get_db
-from ..deps import client_key, current_user, load_project, membership, optional_principal
+from ..deps import client_key, current_user, load_project, membership
 from ..errors import APIError, not_found
-from ..models import (AbuseReport, Artifact, Project, ShareAccessEvent, ShareLink, Subscription, Upload, User)
+from ..models import AbuseReport, Artifact, Project, ShareAccessEvent, ShareLink, Subscription, Upload, User
 from ..plans import plan
 from ..ratelimit import hit
 from ..security import hash_password, new_token, sign, token_hash, verify_password, verify_sig

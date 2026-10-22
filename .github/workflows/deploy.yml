@@ -1,0 +1,70 @@
+name: deploy
+# Staging on every push to main, production on version tags. Skips cleanly when deploy secrets are absent.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deploy configuration
+        id: cfg
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_KEY" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::STAGING_DEPLOY_HOST / STAGING_DEPLOY_SSH_KEY not configured, staging deploy skipped."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy (docker compose pull + up on the staging host)
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$DEPLOY_KEY" > key
+          ssh -i key -o StrictHostKeyChecking=accept-new "$DEPLOY_HOST" \
+            "cd /opt/roomscape && git fetch --depth 1 origin ${GITHUB_SHA} && git checkout ${GITHUB_SHA} && IMAGE_TAG=sha-${GITHUB_SHA::7} docker compose pull && docker compose up -d --remove-orphans"
+          rm -f key
+      - name: Smoke test
+        if: steps.cfg.outputs.enabled == 'true' && vars.STAGING_URL != ''
+        run: curl -fsS --retry 10 --retry-delay 6 "${{ vars.STAGING_URL }}/healthz-api"
+
+  production:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deploy configuration
+        id: cfg
+        env:
+          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_KEY" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PROD_DEPLOY_HOST / PROD_DEPLOY_SSH_KEY not configured, production deploy skipped."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy tagged images
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$DEPLOY_KEY" > key
+          ssh -i key -o StrictHostKeyChecking=accept-new "$DEPLOY_HOST" \
+            "cd /opt/roomscape && git fetch --depth 1 origin tag ${GITHUB_REF_NAME} && git checkout ${GITHUB_REF_NAME} && IMAGE_TAG=${GITHUB_REF_NAME#v} docker compose pull && docker compose up -d --remove-orphans"
+          rm -f key

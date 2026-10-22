@@ -206,8 +206,9 @@ def test_upload_validation_dedupe_and_signed_files(signup):
     up = r["created"][0]
     thumb = c.get(up["thumb_url"])
     assert thumb.status_code == 200 and thumb.content[:3] == b"\xff\xd8\xff"
-    from PIL import Image
     import io
+
+    from PIL import Image
     assert not Image.open(io.BytesIO(c.get(up["web_url"]).content)).getexif()  # EXIF stripped
     tampered = up["thumb_url"].replace("sig=", "sig=0")
     assert c.get(tampered).status_code == 403

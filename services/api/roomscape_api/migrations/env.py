@@ -1,9 +1,8 @@
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
 from roomscape_api import models  # noqa: F401  (register tables)
 from roomscape_api.config import get_settings
 from roomscape_api.db import Base
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))

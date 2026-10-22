@@ -1,0 +1,40 @@
+name: recon-acceptance
+# Real COLMAP run on a small licensed fixture (Eyeful Tower, MIT). Verifies the artifact contract end to end.
+on:
+  push:
+    branches: [main]
+    paths: ["services/reconstruction/**", "tests/fixtures/**", "scripts/fetch_fixture.py", "scripts/recon_acceptance.py", ".github/workflows/recon-acceptance.yml"]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+permissions:
+  contents: read
+jobs:
+  colmap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install COLMAP (CPU)
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends colmap
+          colmap help | head -3 || true
+      - run: pip install -e services/reconstruction
+      - name: Fetch fixture (SHA-256 verified)
+        run: python scripts/fetch_fixture.py eyeful_apartment_48
+      - name: Reconstruct a 16-photo subset and verify
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python scripts/recon_acceptance.py --count 16 --out recon-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recon-acceptance-output
+          path: |
+            recon-out/*.json
+            recon-out/*.png
+            recon-out/*.ply

@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -22,7 +22,7 @@ try:  # OpenCV is optional; overlap estimation is skipped (and reported) without
 
     HAVE_CV2 = True
 except Exception:  # pragma: no cover - depends on environment
-    cv2 = None
+    cv2 = None  # type: ignore[assignment]
     HAVE_CV2 = False
 
 # Decompression-bomb guard: refuse anything above ~120 MP.
@@ -181,7 +181,7 @@ def _orb_overlap(grays: dict[str, np.ndarray], records: dict[str, ImageQuality])
     """Estimate pairwise overlap with ORB + ratio test. Measured, approximate."""
     if not HAVE_CV2 or len(grays) < 2:
         return
-    orb = cv2.ORB_create(nfeatures=1000)
+    orb = cv2.ORB_create(nfeatures=1000)  # type: ignore[attr-defined]
     feats = {}
     for name, g in grays.items():
         small = cv2.resize(g, (g.shape[1] // 2, g.shape[0] // 2)) if max(g.shape) > 800 else g
@@ -246,7 +246,7 @@ def build_report(items: Iterable[tuple[str, bytes]]) -> dict:
         decoded = [r for r in records.values() if r.dhash]
         for i, a in enumerate(decoded):
             for b in decoded[i + 1:]:
-                if a.sha256 != b.sha256 and _hamming(a.dhash, b.dhash) <= NEAR_DUP_HAMMING:
+                if a.sha256 != b.sha256 and _hamming(a.dhash or "", b.dhash or "") <= NEAR_DUP_HAMMING:
                     b.issues.append(ImageIssue("NEAR_DUPLICATE", "info",
                                                f"Almost identical to {a.name} (perceptual hash).",
                                                "Fine to keep, but moving between shots adds parallax."))

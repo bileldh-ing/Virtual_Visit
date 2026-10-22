@@ -25,8 +25,20 @@ from roomscape_api import mailer, taskqueue
 from roomscape_api.config import get_settings
 from roomscape_api.db import get_sessionmaker, is_postgres
 from roomscape_api.jobs_service import stage_event, transition
-from roomscape_api.models import (Artifact, ArtifactValidationResult, CaptureReport, DeletionRequest, JobAttempt,
-                                  Project, ReconstructionJob, TourNode, Upload, UploadManifest, UsageLedger, User)
+from roomscape_api.models import (
+    Artifact,
+    ArtifactValidationResult,
+    CaptureReport,
+    DeletionRequest,
+    JobAttempt,
+    Project,
+    ReconstructionJob,
+    TourNode,
+    Upload,
+    UploadManifest,
+    UsageLedger,
+    User,
+)
 from roomscape_api.state_machine import JobState
 from roomscape_api.storage import get_storage, project_prefix
 from roomscape_recon import __version__ as recon_version

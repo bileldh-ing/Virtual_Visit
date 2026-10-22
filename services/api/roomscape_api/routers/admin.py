@@ -17,8 +17,18 @@ from ..db import get_db
 from ..deps import platform_admin
 from ..errors import APIError, not_found
 from ..jobs_service import transition
-from ..models import (AbuseReport, AuditEvent, DeletionRequest, JobAttempt, Notification, Organization, Project,
-                      ReconstructionJob, Upload, User)
+from ..models import (
+    AbuseReport,
+    AuditEvent,
+    DeletionRequest,
+    JobAttempt,
+    Notification,
+    Organization,
+    Project,
+    ReconstructionJob,
+    Upload,
+    User,
+)
 from ..observability import METRICS
 from ..state_machine import ACTIVE, PROCESSING, TERMINAL, JobState
 from ..storage import get_storage

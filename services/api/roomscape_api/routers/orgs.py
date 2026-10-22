@@ -15,8 +15,18 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import ROLE_RANK, Principal, current_principal, current_user, require_org_role
 from ..errors import APIError, not_found
-from ..models import (AuditEvent, AuthSession, DeletionRequest, Invitation, Notification, Organization,
-                      OrganizationMembership, Project, Subscription, User)
+from ..models import (
+    AuditEvent,
+    AuthSession,
+    DeletionRequest,
+    Invitation,
+    Notification,
+    Organization,
+    OrganizationMembership,
+    Project,
+    Subscription,
+    User,
+)
 from ..plans import plan
 from ..ratelimit import hit
 from ..security import new_token, token_hash, verify_password

@@ -28,7 +28,7 @@ def main() -> int:
     ap.add_argument("--email", default="demo@roomscape.dev")
     ap.add_argument("--password", default="Demo-Password-2026")
     ap.add_argument("--title", default="Eyeful Apartment (sample)")
-    ap.add_argument("--state", type=Path, default=Path("/tmp/devdata/demo.json"))
+    ap.add_argument("--state", type=Path, default=Path(".data/demo.json"))
     a = ap.parse_args()
     c = httpx.Client(base_url=a.api, headers={"X-Requested-With": "roomscape"}, timeout=300, trust_env=False)
     r = c.post("/api/v1/auth/signup", json={"email": a.email, "password": a.password, "display_name": "Demo Agent",

@@ -20,8 +20,19 @@ from ..db import get_db, get_sessionmaker
 from ..deps import current_user, load_project, membership
 from ..errors import APIError, not_found
 from ..jobs_service import transition
-from ..models import (Artifact, ArtifactValidationResult, JobAttempt, JobStageEvent, Organization, Project,
-                      ReconstructionJob, Subscription, Upload, UsageLedger, User)
+from ..models import (
+    Artifact,
+    ArtifactValidationResult,
+    JobAttempt,
+    JobStageEvent,
+    Organization,
+    Project,
+    ReconstructionJob,
+    Subscription,
+    Upload,
+    UsageLedger,
+    User,
+)
 from ..plans import plan
 from ..ratelimit import hit
 from ..signing import file_url
@@ -103,8 +114,8 @@ def create_job(project_id: uuid.UUID, body: JobCreate, user: User = Depends(curr
         raise APIError(422, "NEEDS_MORE_IMAGES", "Photogrammetry needs at least 3 overlapping photos (many more are recommended).")
     if mode == "PANORAMA_TOUR" and not inputs:
         raise APIError(422, "NO_PANORAMAS", "No 360° equirectangular panoramas were uploaded.")
-    from .projects import input_fingerprint
     from ..models import CaptureReport
+    from .projects import input_fingerprint
 
     fp, _ = input_fingerprint(db, p.id)
     rep = db.scalar(select(CaptureReport).where(CaptureReport.project_id == p.id, CaptureReport.input_fingerprint == fp)

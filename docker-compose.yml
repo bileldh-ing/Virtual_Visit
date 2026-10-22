@@ -1,0 +1,75 @@
+# Local full stack: docker compose up --build   →  web http://localhost:3000, API http://localhost:8000, MinIO console http://localhost:9001
+name: roomscape
+x-app-env: &app-env
+  ROOMSCAPE_ENV: development
+  ROOMSCAPE_DATABASE_URL: postgresql+psycopg://roomscape:roomscape@postgres:5432/roomscape
+  ROOMSCAPE_REDIS_URL: redis://redis:6379/0
+  ROOMSCAPE_SECRET_KEY: ${ROOMSCAPE_SECRET_KEY:-dev-only-secret-key-change-me-0123456789}
+  ROOMSCAPE_STORAGE_BACKEND: s3
+  ROOMSCAPE_S3_ENDPOINT_URL: http://minio:9000
+  ROOMSCAPE_S3_BUCKET: roomscape-private
+  ROOMSCAPE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-roomscape}
+  ROOMSCAPE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-roomscape-dev-secret}
+  ROOMSCAPE_PUBLIC_WEB_URL: ${ROOMSCAPE_PUBLIC_WEB_URL:-http://localhost:3000}
+  ROOMSCAPE_CORS_ORIGINS: '["http://localhost:3000"]'
+  ROOMSCAPE_BOOTSTRAP_ADMIN_EMAIL: ${ROOMSCAPE_BOOTSTRAP_ADMIN_EMAIL:-admin@roomscape.dev}
+  ROOMSCAPE_COLMAP_THREADS: ${ROOMSCAPE_COLMAP_THREADS:-4}
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: roomscape
+      POSTGRES_PASSWORD: roomscape
+      POSTGRES_DB: roomscape
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roomscape"]
+      interval: 5s
+      retries: 20
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-roomscape}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-roomscape-dev-secret}
+    ports: ["9001:9001"]
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 20
+  api:
+    build: { context: ., dockerfile: services/api/Dockerfile }
+    environment: *app-env
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+  worker:
+    build: { context: ., dockerfile: services/worker/Dockerfile }
+    environment: *app-env
+    volumes: [jobs:/data/jobs]
+    depends_on:
+      api: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 6g }
+  web:
+    build: { context: apps/web }
+    environment:
+      ROOMSCAPE_API_INTERNAL_URL: http://api:8000
+    ports: ["3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes: { pgdata: {}, redisdata: {}, miniodata: {}, jobs: {} }

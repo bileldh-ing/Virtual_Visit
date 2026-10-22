@@ -15,9 +15,9 @@ import shutil
 import signal
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 from .errors import ErrorCategory, ReconError
 
@@ -95,7 +95,8 @@ class ColmapEngine:
     # -------------------------------------------------------------- process
 
     def _run(self, name: str, args: list[str]) -> StepResult:
-        argv = [self.info.binary, *args]  # type: ignore[list-item]
+        assert self.info.binary, "COLMAP binary not detected"
+        argv: list[str] = [str(self.info.binary), *args]
         log_path = self.log_dir / f"colmap_{name}.log"
         start = time.monotonic()
         with log_path.open("wb") as log:
@@ -179,7 +180,7 @@ class ColmapEngine:
     def analyze(self, model_dir: Path) -> dict:
         res = self._run("model_analyzer", ["model_analyzer", "--path", str(model_dir)])
         text = (self.log_dir / res.log_path).read_text(errors="replace")
-        stats = {}
+        stats: dict[str, float] = {}
         for key, label in [("cameras", "Cameras"), ("images", "Images"), ("registered_images", "Registered images"),
                            ("points", "Points"), ("observations", "Observations")]:
             m = re.search(rf"\] {label}: (\d+)", text)

@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/__pycache__
+**/*.egg-info
+**/.pytest_cache
+.git
+.data
+tests/fixtures/reconstruction/*/images
+apps/web

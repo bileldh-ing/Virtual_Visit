@@ -3,8 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from roomscape_recon.artifacts import (build_manifest, build_viewer_metadata, safe_child, validate_ply, verify_manifest,
-                                       write_ply)
+from roomscape_recon.artifacts import build_manifest, build_viewer_metadata, safe_child, validate_ply, verify_manifest, write_ply
 from roomscape_recon.colmap_io import Camera, RegisteredImage, SparseModel, qvec_to_rotmat, read_text_model
 from roomscape_recon.errors import ReconError
 

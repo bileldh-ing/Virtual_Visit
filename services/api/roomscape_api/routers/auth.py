@@ -12,7 +12,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import COOKIE, Principal, client_key, current_principal
 from ..errors import APIError
-from ..models import (AuthSession, EmailToken, Organization, OrganizationMembership, Subscription, User)
+from ..models import AuthSession, EmailToken, Organization, OrganizationMembership, Subscription, User
 from ..ratelimit import hit
 from ..security import hash_password, new_token, password_problems, token_hash, verify_password
 

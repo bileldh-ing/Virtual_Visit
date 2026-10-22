@@ -14,15 +14,23 @@ import os
 import re
 import shutil
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 from PIL import Image
 
 from . import __version__
-from .artifacts import (build_manifest, build_viewer_metadata, filter_for_web, render_preview, safe_child,
-                        sha256_file, validate_ply, write_ply)
+from .artifacts import (
+    build_manifest,
+    build_viewer_metadata,
+    filter_for_web,
+    render_preview,
+    safe_child,
+    sha256_file,
+    validate_ply,
+    write_ply,
+)
 from .colmap_engine import ColmapConfig, ColmapEngine, EngineInfo, detect
 from .colmap_io import read_text_model
 from .errors import ErrorCategory, ReconError
@@ -235,7 +243,7 @@ def run_photogrammetry(input_dir: Path, work_dir: Path, out_dir: Path, config: C
     }
     if dense_entry:
         metrics["dense_points"] = validate_ply(out_dir / "dense_points.ply").vertex_count
-    entries = [
+    entries: list[dict] = [
         {"path": "sparse_points_web.ply", "kind": "POINT_CLOUD_WEB", "vertex_count": web_info.vertex_count},
         {"path": "sparse_points_raw.ply", "kind": "POINT_CLOUD_RAW", "vertex_count": raw_info.vertex_count},
         {"path": "cameras.json", "kind": "VIEWPOINTS"},

@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterator, Protocol
+from typing import Protocol
 
 from .config import get_settings
 
