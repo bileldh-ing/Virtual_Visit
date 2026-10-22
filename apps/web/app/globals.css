@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* RoomScape "Liquid Glass" design tokens: architectural charcoal/navy base, warm ivory
+   surfaces, muted teal accents. Glass is reserved for floating viewer controls,
+   navigation and dialogs; dense content sits on high-contrast surfaces. */
+@theme {
+  --color-ink-950: #070b12;
+  --color-ink-900: #0b111b;
+  --color-ink-850: #0f1724;
+  --color-ink-800: #141e2e;
+  --color-ink-700: #1d2a3e;
+  --color-ink-600: #2a3a53;
+  --color-ink-400: #6b7a92;
+  --color-ink-300: #98a5b8;
+  --color-ivory-50: #fbf8f2;
+  --color-ivory-100: #f4efe4;
+  --color-ivory-200: #e9e1d1;
+  --color-teal-300: #7fe3d3;
+  --color-teal-400: #45cfbb;
+  --color-teal-500: #22b3a0;
+  --color-teal-600: #138a7b;
+  --color-amber-400: #f2b84b;
+  --color-rose-400: #f07a7a;
+  --color-signal-500: #4f6bff;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+
+  --radius-glass: 1.25rem;
+  --shadow-glass: 0 10px 40px -12px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --glass-bg: rgb(15 23 36 / 0.58);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-blur: 18px;
+}
+
+html,
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ivory-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 600px at 85% -10%, rgb(34 179 160 / 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgb(79 107 255 / 0.08), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-strong {
+  background: rgb(11 17 27 / 0.82);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: var(--shadow-glass);
+}
+
+.surface {
+  background: var(--color-ink-900);
+  border: 1px solid rgb(255 255 255 / 0.07);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-teal-300);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Indeterminate activity bar: signals "a stage is running" without inventing a percentage. */
+@keyframes rs-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+.indeterminate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(127 227 211 / 0.85), transparent);
+  animation: rs-indeterminate 1.4s var(--ease-out-soft) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
