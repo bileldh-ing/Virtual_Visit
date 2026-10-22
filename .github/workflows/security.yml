@@ -36,7 +36,7 @@ jobs:
           pip-audit --skip-editable --progress-spinner off
       - uses: pnpm/action-setup@v4
         with: { version: 12.14.0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22 }
       - name: pnpm audit (high and critical)
         working-directory: apps/web
