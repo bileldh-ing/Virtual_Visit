@@ -27,6 +27,13 @@ const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  experimental: {
+    // The /api/* rewrite goes through the Next proxy, which buffers request bodies
+    // and truncates anything over 10 MB by default. Photo uploads are multipart
+    // (up to 40 MB per file on the API side), so allow headroom; the client also
+    // splits uploads into ~8 MB batches (lib/batches.ts).
+    proxyClientMaxBodySize: "100mb",
+  },
   async rewrites() {
     // The browser only ever talks to this origin; the API stays private behind it.
     return [

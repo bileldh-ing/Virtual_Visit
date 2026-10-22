@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { AlertTriangle, CheckCircle2, ImagePlus, RefreshCw, ScanSearch, Trash2, UploadCloud, XCircle } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { api, ApiError, formatBytes, uploadWithProgress } from "@/lib/api";
+import { planBatches } from "@/lib/batches";
 import { useUploads } from "@/lib/hooks";
 import type { Project, UploadItem } from "@/lib/schemas";
 import { Badge, Button, Card, ErrorNote, Spinner } from "@/components/ui";
@@ -26,7 +27,6 @@ type CaptureReport = {
   };
 };
 
-const BATCH = 10;
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
 export function PhotosTab({ project }: { project: Project }) {
@@ -55,18 +55,20 @@ export function PhotosTab({ project }: { project: Project }) {
       let sent = 0;
       setProgress({ done: 0, total: files.length, bytes: 0, totalBytes });
       try {
-        for (let i = 0; i < files.length; i += BATCH) {
-          const batch = files.slice(i, i + BATCH);
+        let done = 0;
+        for (const batch of planBatches(files)) {
+          const before = done;
           const form = new FormData();
           batch.forEach((f) => form.append("files", f, f.name));
           const r = await uploadWithProgress<UploadResult>(`/api/v1/projects/${project.id}/uploads`, form, (loaded) =>
-            setProgress({ done: i, total: files.length, bytes: sent + loaded, totalBytes }),
+            setProgress({ done: before, total: files.length, bytes: sent + loaded, totalBytes }),
           );
           sent += batch.reduce((s, f) => s + f.size, 0);
           agg.created.push(...r.created);
           agg.duplicates.push(...r.duplicates);
           agg.rejected.push(...r.rejected);
-          setProgress({ done: Math.min(files.length, i + BATCH), total: files.length, bytes: sent, totalBytes });
+          done += batch.length;
+          setProgress({ done, total: files.length, bytes: sent, totalBytes });
         }
       } catch (e) {
         setError(e as ApiError);
