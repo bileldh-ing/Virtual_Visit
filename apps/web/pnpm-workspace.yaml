@@ -1,0 +1,8 @@
+minimumReleaseAgeExclude:
+  - framer-motion@14.5.0
+  - lucide-react@1.61.0
+  - motion-dom@14.5.0
+allowBuilds:
+  unrs-resolver: true
+  sharp: true
+strictDepBuilds: false
