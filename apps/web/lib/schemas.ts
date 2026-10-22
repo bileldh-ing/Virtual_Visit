@@ -49,7 +49,7 @@ export const TourSchema = z.object({
   nodes: z.array(
     z.object({
       id: z.string(),
-      kind: z.enum(["VIEWPOINT", "PANORAMA"]),
+      kind: z.enum(["VIEWPOINT", "PANORAMA", "PHOTO_AT_AZIMUTH"]),
       ref: z.string(),
       label: z.string(),
       sort: z.number(),
@@ -103,7 +103,16 @@ export type Job = {
     limitations?: string[];
     recapture_suggestions?: string[];
     steps?: { name: string; seconds: number }[];
+    honesty?: string;
+    honesty_text?: string;
+    engine_used?: string;
+    engine_chain?: { engine: string; outcome: string; category?: string; message?: string; seconds?: number }[];
   } | null;
+  engine?: string | null;
+  engine_used?: string | null;
+  fallback?: Fallback | null;
+  cost_estimate?: { chain?: EngineChain; engines?: Record<string, CostEstimate | null>; marble_balance?: number | null } | null;
+  provider?: { provider: string; operation_id?: string | null; world_id?: string | null; model?: string | null; estimate_credits?: number | null } | null;
   input_count: number;
   created_at: string;
   started_at: string | null;
@@ -114,6 +123,49 @@ export type Job = {
   events?: JobEvent[];
   attempts?: { number: number; state: string; worker_id: string; started_at: string; finished_at: string | null; error_category: string | null; engine?: Record<string, unknown> }[];
 };
+
+export type Fallback = { from: string; to: string; reason_code: string; reason: string; notice: string };
+export type CostEstimate = { credits: number | null; usd: number | null; minutes: number | null; breakdown: { item: string; credits: number }[]; note: string };
+export type EngineChain = { requested: string; intended: string | null; engines: string[]; skipped: { engine: string; reason_code: string; reason: string | null }[]; primary: string | null; notice?: string | null };
+export type EngineInfo = {
+  name: string;
+  label: string;
+  honesty: "reconstructed" | "captured" | "depth_estimated" | "ai_generated";
+  honesty_text: string;
+  output_type: string;
+  description: string;
+  capabilities: { available: boolean; reason: string | null; requires_gpu: boolean; paid: boolean; accepts: string[]; min_inputs: number; max_inputs: number | null; outputs: string[] };
+  runnable?: boolean;
+  not_runnable_reason?: string | null;
+  estimate?: CostEstimate;
+};
+export type EngineOptions = {
+  engines: EngineInfo[];
+  marble: { configured: boolean; ok: boolean; balance: number | null; error_category: string | null };
+  marble_allowance: { used: number; limit: number };
+  chain: EngineChain;
+};
+
+export const WorldSchema = z
+  .object({
+    schema: z.string(),
+    engine: z.string(),
+    honesty: z.enum(["ai_generated", "depth_estimated", "reconstructed", "captured"]),
+    world_id: z.string().optional(),
+    model: z.string().nullable().optional(),
+    caption: z.string().nullable().optional(),
+    semantics_metadata: z.record(z.string(), z.number().nullable()).optional(),
+    input_photos: z.array(z.object({ name: z.string(), upload_id: z.string().nullable(), azimuth_deg: z.number().nullable(), azimuth_source: z.string().nullable().optional() })).optional(),
+    viewpoints: z
+      .array(z.object({ name: z.string(), upload_id: z.string().nullable(), position: z.array(z.number()).length(3), rotation_c2w: z.array(z.array(z.number())), fov_y_deg: z.number(), aspect: z.number() }))
+      .optional(),
+    spawn: z.object({ position: z.array(z.number()).length(3), yaw_deg: z.number() }).optional(),
+    eye_height: z.number().optional(),
+    measurement: z.object({ enabled: z.boolean(), reason: z.string() }).optional(),
+    depth_model: z.object({ name: z.string(), license: z.string() }).passthrough().optional(),
+  })
+  .passthrough();
+export type World = z.infer<typeof WorldSchema>;
 
 export type Project = {
   id: string;

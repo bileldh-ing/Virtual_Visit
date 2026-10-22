@@ -10,6 +10,7 @@ import type { Artifact, Job, Tour } from "@/lib/schemas";
 import { ErrorNote, Spinner } from "@/components/ui";
 import { TourViewer } from "@/components/viewer/TourViewer";
 import { PanoramaViewer } from "@/components/viewer/PanoramaViewer";
+import { isWorldArtifactSet, WorldViewer } from "@/components/viewer/WorldViewer";
 
 export default function ViewerPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,7 +24,9 @@ export default function ViewerPage() {
   return (
     <div className="-mx-4 -my-8 sm:-mx-6">
       <div className="h-[calc(100dvh-4rem)] p-2 sm:p-3">
-        {job?.mode === "PANORAMA_TOUR" && pano.length ? (
+        {isWorldArtifactSet(arts.data?.artifacts ?? []) ? (
+          <WorldViewer title={project.data?.title ?? ""} artifacts={arts.data?.artifacts ?? []} tour={tour.data} fallback={job?.fallback} className="h-full" />
+        ) : job?.mode === "PANORAMA_TOUR" && pano.length ? (
           <PanoramaViewer nodes={pano} title={project.data?.title ?? ""} className="h-full" />
         ) : (
           <TourViewer title={project.data?.title ?? ""} artifacts={arts.data?.artifacts ?? []} tour={tour.data} result={job?.result} className="h-full" />

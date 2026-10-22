@@ -10,6 +10,7 @@ import { Button, ErrorNote, Input, Modal, Select, Spinner, Textarea } from "@/co
 import { Logo } from "@/components/shell/Logo";
 import { TourViewer } from "./TourViewer";
 import { PanoramaViewer } from "./PanoramaViewer";
+import { isWorldArtifactSet, WorldViewer } from "./WorldViewer";
 
 export type PublicTourData = {
   project: { id: string; title: string; description: string; property_type: string; is_public_sample: boolean };
@@ -24,6 +25,8 @@ const unlockKey = (t: string) => `rs.unlock.${t.slice(0, 8)}`;
 
 export function TourBody({ data, embed, className }: { data: PublicTourData; embed?: boolean; className?: string }) {
   const pano = data.tour.nodes.filter((n) => n.kind === "PANORAMA" && n.image_url).map((n) => ({ id: n.id, label: n.label || n.ref, image: n.image_url as string, thumb: n.thumb_url }));
+  if (isWorldArtifactSet(data.artifacts))
+    return <WorldViewer title={data.project.title} artifacts={data.artifacts} tour={data.tour} fallback={data.job?.fallback} className={className} compact={embed} />;
   if (data.job?.mode === "PANORAMA_TOUR" && pano.length) return <PanoramaViewer nodes={pano} title={data.project.title} className={className} />;
   return <TourViewer title={data.project.title} artifacts={data.artifacts} tour={data.tour} result={data.job?.result} className={className} compact={embed} />;
 }
