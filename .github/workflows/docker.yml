@@ -20,7 +20,7 @@ jobs:
           - { name: worker, context: ., file: services/worker/Dockerfile }
           - { name: web, context: apps/web, file: apps/web/Dockerfile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR (push events only)
         if: github.event_name == 'push'
