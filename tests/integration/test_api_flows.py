@@ -43,6 +43,13 @@ def new_project(c, org_id, title="Flat"):
 
 # ------------------------------------------------------------------ test double engine
 
+def _colmap_present(*a, **kw):
+    """TEST DOUBLE: pretend COLMAP is installed (the photogrammetry call itself is also a double)."""
+    from roomscape_recon.colmap_engine import EngineInfo
+
+    return EngineInfo(True, "colmap", "test-double", False)
+
+
 def fake_photogrammetry(input_dir, work_dir, out_dir, config=None, on_stage=lambda *a: None, should_cancel=lambda: False,
                         engine_info=None, image_map=None):
     """TEST DOUBLE: writes small but valid artifacts with the real writers/validators."""
@@ -239,10 +246,13 @@ def _start(c, p, key=None, confirm=True):
 def test_job_lifecycle_with_test_double(monkeypatch, ready_project):
     from roomscape_api.db import get_sessionmaker
     from roomscape_api.models import UsageLedger
+    from roomscape_recon.engines import local as local_engines
     from roomscape_worker import tasks
     from sqlalchemy import func, select
 
-    monkeypatch.setattr(tasks, "run_photogrammetry", fake_photogrammetry)
+    monkeypatch.setattr(local_engines, "run_photogrammetry", fake_photogrammetry)
+
+    monkeypatch.setattr(local_engines, "detect", _colmap_present)
     c, org, _, p = ready_project
     key = uuid.uuid4().hex
     j = _start(c, p, key).json()
@@ -283,6 +293,7 @@ def test_confirmation_required_when_capture_has_warnings(ready_project):
 
 
 def test_retryable_failure_then_success_keeps_history(monkeypatch, ready_project):
+    from roomscape_recon.engines import local as local_engines
     from roomscape_recon.errors import ErrorCategory, ReconError
     from roomscape_worker import tasks
 
@@ -294,7 +305,9 @@ def test_retryable_failure_then_success_keeps_history(monkeypatch, ready_project
             raise ReconError(ErrorCategory.OUT_OF_MEMORY, "killed", "detail /secret/path")
         return fake_photogrammetry(*a, **kw)
 
-    monkeypatch.setattr(tasks, "run_photogrammetry", flaky)
+    monkeypatch.setattr(local_engines, "run_photogrammetry", flaky)
+
+    monkeypatch.setattr(local_engines, "detect", _colmap_present)
     c, _, _, p = ready_project
     j = _start(c, p).json()
     assert tasks.process_job(j["id"]) == "OUT_OF_MEMORY"
@@ -311,13 +324,16 @@ def test_retryable_failure_then_success_keeps_history(monkeypatch, ready_project
 
 
 def test_deterministic_failure_is_not_retried(monkeypatch, ready_project):
+    from roomscape_recon.engines import local as local_engines
     from roomscape_recon.errors import ErrorCategory, ReconError
     from roomscape_worker import tasks
 
     def bad(*a, **kw):
         raise ReconError(ErrorCategory.INSUFFICIENT_OVERLAP, "No camera poses could be estimated.")
 
-    monkeypatch.setattr(tasks, "run_photogrammetry", bad)
+    monkeypatch.setattr(local_engines, "run_photogrammetry", bad)
+
+    monkeypatch.setattr(local_engines, "detect", _colmap_present)
     c, _, _, p = ready_project
     j = _start(c, p).json()
     tasks.process_job(j["id"])
@@ -367,9 +383,12 @@ def test_worker_crash_recovered_by_reconciler(ready_project):
 
 @pytest.fixture
 def finished_project(monkeypatch, ready_project):
+    from roomscape_recon.engines import local as local_engines
     from roomscape_worker import tasks
 
-    monkeypatch.setattr(tasks, "run_photogrammetry", fake_photogrammetry)
+    monkeypatch.setattr(local_engines, "run_photogrammetry", fake_photogrammetry)
+
+    monkeypatch.setattr(local_engines, "detect", _colmap_present)
     c, org, email, p = ready_project
     j = _start(c, p).json()
     assert tasks.process_job(j["id"]) == "SUCCEEDED"

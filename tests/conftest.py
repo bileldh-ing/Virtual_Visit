@@ -33,6 +33,12 @@ os.environ["ROOMSCAPE_SECRET_KEY"] = "test-secret-key-0123456789abcdef"
 os.environ["ROOMSCAPE_REDIS_URL"] = ""
 os.environ["ROOMSCAPE_BOOTSTRAP_ADMIN_EMAIL"] = "admin@example.com"
 os.environ["ROOMSCAPE_STRIPE_WEBHOOK_SECRET"] = "whsec_test_secret"
+# 2.0 engines: tests never call World Labs and do not download the depth model unless a test opts in.
+os.environ.pop("WLT_API_KEY", None)
+os.environ["ROOMSCAPE_MARBLE_AUTH_MODE"] = "header"
+os.environ["ROOMSCAPE_MARBLE_LIVE_BALANCE"] = "false"
+os.environ["ROOMSCAPE_DEPTH_ENGINE_ENABLED"] = "false"
+os.environ["ROOMSCAPE_DEPTH_MODEL_DOWNLOAD"] = "false"
 
 
 @pytest.fixture(scope="session")

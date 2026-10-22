@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "RoomScape AI reconstruction library: capture QA, COLMAP adapter, artifact contract"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-dependencies = ["numpy>=1.26", "pillow>=10.3", "opencv-python-headless>=4.9"]
+dependencies = ["numpy>=1.26", "pillow>=10.3", "opencv-python-headless>=4.9", "httpx>=0.27"]
+
+[project.optional-dependencies]
+depth = ["onnxruntime>=1.18"]
 
 [project.scripts]
 roomscape-recon = "roomscape_recon.cli:main"

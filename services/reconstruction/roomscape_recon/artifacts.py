@@ -224,7 +224,8 @@ def render_preview(model: SparseModel, meta: dict, path: Path, size: int = 768) 
 # ---------------------------------------------------------------- manifest
 
 MIME = {".ply": "application/ply", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg",
-        ".txt": "text/plain", ".log": "text/plain", ".glb": "model/gltf-binary", ".splat": "application/octet-stream"}
+        ".txt": "text/plain", ".log": "text/plain", ".glb": "model/gltf-binary", ".splat": "application/octet-stream",
+        ".spz": "application/octet-stream", ".webp": "image/webp"}
 
 
 def build_manifest(out_dir: Path, entries: list[dict], engine: dict) -> dict:

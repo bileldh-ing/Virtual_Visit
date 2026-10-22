@@ -25,6 +25,15 @@ class ErrorCategory(str, Enum):
     ARTIFACT_INVALID = "ARTIFACT_INVALID"
     WORKER_LOST = "WORKER_LOST"  # retryable
     INTERNAL = "INTERNAL"  # retryable once
+    # Hosted-provider failures (World Labs Marble). These never retry the same paid call blindly;
+    # the engine chain falls back to the next engine instead (see engines/registry.py).
+    PROVIDER_AUTH = "PROVIDER_AUTH"  # 401/403: key missing, invalid, expired or revoked
+    PROVIDER_CREDITS = "PROVIDER_CREDITS"  # 402 or balance below the estimated cost
+    PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"  # 429 after bounded backoff
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"  # 5xx / network errors after bounded retries
+    PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"  # operation did not finish within the configured budget
+    PROVIDER_REJECTED = "PROVIDER_REJECTED"  # 400/422: input or content-policy rejection
+    PROVIDER_FAILED = "PROVIDER_FAILED"  # operation finished with an error
 
 
 RETRYABLE = {

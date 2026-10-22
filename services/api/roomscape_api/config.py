@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     job_step_timeout_s: int = 3600
     colmap_max_image_size: int = 1600
     colmap_threads: int = 2
+
+    # ---- 2.0 engines -------------------------------------------------------------------------
+    default_engine: str = "auto"  # auto | marble_world | depth_room | colmap_sparse | panorama_tour
+    # World Labs Marble. The key is read from WLT_API_KEY (never logged, never returned by the API).
+    wlt_api_key: str | None = Field(default=None, validation_alias=AliasChoices("WLT_API_KEY", "ROOMSCAPE_WLT_API_KEY"))
+    marble_auth_mode: str = "header"  # header | gateway (an egress proxy injects the key) | off
+    marble_base_url: str = "https://api.worldlabs.ai"
+    marble_model: str = "marble-1.1"  # marble-1.0-draft | marble-1.0 | marble-1.1 | marble-1.1-plus
+    marble_operation_timeout_s: int = 1800
+    marble_spz_variants: str = "100k,500k"
+    marble_live_balance: bool = True  # GET /marble/v1/credits when listing engines (cached)
+    # Free local fallback (Depth Anything V2 Small, Apache-2.0)
+    depth_engine_enabled: bool = True
+    depth_model_path: str = "./.data/models/depth-anything-v2-small/model.onnx"
+    depth_model_download: bool = True
 
     max_upload_bytes: int = 40 * 1024 * 1024
     max_files_per_request: int = 60

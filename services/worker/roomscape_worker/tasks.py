@@ -9,9 +9,7 @@ re-queued with exponential backoff + jitter up to ``max_attempts``.
 
 from __future__ import annotations
 
-import json
 import logging
-import math
 import os
 import random
 import shutil
@@ -24,6 +22,7 @@ from pathlib import Path
 from roomscape_api import mailer, taskqueue
 from roomscape_api.config import get_settings
 from roomscape_api.db import get_sessionmaker, is_postgres
+from roomscape_api.engines import LEGACY_MODE_TO_ENGINE, build_registry
 from roomscape_api.jobs_service import stage_event, transition
 from roomscape_api.models import (
     Artifact,
@@ -43,10 +42,9 @@ from roomscape_api.state_machine import JobState
 from roomscape_api.storage import get_storage, project_prefix
 from roomscape_recon import __version__ as recon_version
 from roomscape_recon.artifacts import sha256_file
-from roomscape_recon.colmap_engine import ColmapConfig, detect
+from roomscape_recon.colmap_engine import detect
+from roomscape_recon.engines import EngineContext, EngineInput, plan_chain, run_chain
 from roomscape_recon.errors import ErrorCategory, ReconError
-from roomscape_recon.panorama import run_panorama
-from roomscape_recon.pipeline import run_photogrammetry
 from roomscape_recon.quality import build_report
 from sqlalchemy import select
 
@@ -56,7 +54,7 @@ log = logging.getLogger("roomscape.worker")
 WORKER_ID = f"{socket.gethostname()}:{os.getpid()}"
 HEARTBEAT_S = 10
 PUBLIC_KINDS = {"POINT_CLOUD_WEB", "VIEWPOINTS", "PREVIEW", "QUALITY_REPORT", "PANORAMA", "PANORAMA_THUMB", "TOUR", "MESH",
-                "POINT_CLOUD_DENSE"}
+                "POINT_CLOUD_DENSE", "SPLAT_SPZ", "COLLIDER_MESH", "ROOM_MESH", "WORLD", "THUMBNAIL"}
 
 
 def now() -> datetime:
@@ -175,14 +173,46 @@ def _on_stage_factory(jid: uuid.UUID, attempt_id: uuid.UUID):
     return on_stage
 
 
+def _persist_checkpoint(jid: uuid.UUID, engine_name: str):
+    """Durably store an engine's provider state (e.g. Marble operation id) before the engine continues."""
+    def save(cp: dict) -> None:
+        with get_sessionmaker()() as db:
+            job = db.get(ReconstructionJob, jid)
+            if job is None:
+                return
+            state = dict(job.provider_state or {})
+            state[engine_name] = cp
+            job.provider_state = state
+            db.commit()
+    return save
+
+
+def _chain_event_factory(jid: uuid.UUID, attempt_id: uuid.UUID):
+    first = {"seen": False}
+
+    def on_event(kind: str, data: dict) -> None:
+        with get_sessionmaker()() as db:
+            job = db.get(ReconstructionJob, jid)
+            if job is None:
+                return
+            if kind == "engine_started":
+                if first["seen"] and job.state not in (JobState.INPUT_VALIDATION.value, JobState.CANCEL_REQUESTED.value):
+                    # a fallback engine restarts the pipeline at input validation
+                    transition(db, job, JobState.INPUT_VALIDATION, attempt_id=attempt_id,
+                               data={"engine": data.get("engine"), "reason": "engine fallback"})
+                first["seen"] = True
+            stage_event(db, job, job.state, kind, attempt_id=attempt_id, data=data)
+            db.commit()
+    return on_event
+
+
 def _run(jid, attempt_id, attempt_no, org_id, project_id, mode, upload_ids, cfg, ws: Path, hb: Heartbeat) -> str:
-    s = get_settings()
     storage = get_storage()
     Session = get_sessionmaker()
     try:
         inp = ws / "input"
         inp.mkdir(parents=True, exist_ok=True)
-        image_map, manifest = {}, []
+        manifest, inputs = [], []
         with Session() as db:
             ups = db.scalars(select(Upload).where(Upload.id.in_(upload_ids))).all()
             for u in ups:
@@ -193,51 +223,52 @@ def _run(jid, attempt_id, attempt_no, org_id, project_id, mode, upload_ids, cfg,
                 storage.download(u.storage_key, dest)
                 if sha256_file(dest) != u.sha256:
                     raise ReconError(ErrorCategory.INVALID_INPUT, "A stored photo failed its checksum.", str(u.id))
-                image_map[f"{u.id}.jpg"] = str(u.id)
-                image_map[f"{u.id}{ext}"] = str(u.id)
                 manifest.append({"upload_id": str(u.id), "sha256": u.sha256, "bytes": u.bytes, "width": u.width,
                                  "height": u.height, "mime": u.mime})
+                inputs.append(EngineInput(path=dest, name=u.display_name or dest.name, upload_id=str(u.id),
+                                          width=u.width, height=u.height, is_panorama=bool(u.is_panorama),
+                                          mime=u.mime, bytes=u.bytes))
             db.add(UploadManifest(job_id=jid, attempt_id=attempt_id, manifest={"inputs": manifest}))
+            job = db.get(ReconstructionJob, jid)
+            requested = job.engine or LEGACY_MODE_TO_ENGINE.get(mode, "auto")
+            allow_fallback = bool(cfg.get("allow_fallback", job.engine is not None))
+            provider_state = dict(job.provider_state or {})
             db.commit()
         if len(manifest) < len(upload_ids):
             log.warning("some inputs were deleted before processing", extra={"job_id": str(jid)})
+        registry = build_registry(probe_local=True)
+        plan = plan_chain(registry, inputs, requested, allow_fallback)
         on_stage = _on_stage_factory(jid, attempt_id)
-        out = ws / "out"
-        if mode == "PANORAMA_TOUR":
-            report = run_panorama(inp, out, on_stage=on_stage, image_map=image_map)
-            res = {"status": "SUCCEEDED", "output_type": "panorama_tour", "metrics": report["metrics"],
-                   "warnings": report["warnings"], "limitations": report["limitations"],
-                   "recapture_suggestions": [], "stages_completed": ["INPUT_VALIDATION", "TEXTURE_OR_APPEARANCE_PROCESSING",
-                                                                    "ARTIFACT_VALIDATION"],
-                   "engine": {"name": "panorama", "version": recon_version}}
-            artifacts = report["artifacts"]
-        else:
-            ccfg = ColmapConfig(max_image_size=int(cfg.get("max_image_size", s.colmap_max_image_size)),
-                                num_threads=int(cfg.get("threads", s.colmap_threads)),
-                                matcher=cfg.get("matcher", "exhaustive"), step_timeout_s=s.job_step_timeout_s)
-            r = run_photogrammetry(inp, ws / "work", out, ccfg, on_stage=on_stage, should_cancel=hb.cancel.is_set,
-                                   image_map=image_map)
-            res = r.to_dict()
-            res.pop("artifacts", None)
-            res.pop("steps", None)
-            res["steps"] = [{k: v for k, v in st.items() if k != "argv"} | {"command": st["argv"][1] if len(st["argv"]) > 1 else ""}
-                            for st in r.steps]
-            artifacts = r.artifacts
+
+        def make_ctx(name: str) -> EngineContext:
+            return EngineContext(inputs=inputs, work_dir=ws / "work" / name, out_dir=ws / "out" / name,
+                                 on_stage=on_stage, should_cancel=hb.cancel.is_set,
+                                 checkpoint=dict(provider_state.get(name) or {}),
+                                 save_checkpoint=_persist_checkpoint(jid, name),
+                                 options={"display_name": f"RoomScape {str(jid)[:8]}"}, job_id=str(jid))
+
+        outcome = run_chain(registry, plan, make_ctx, on_event=_chain_event_factory(jid, attempt_id))
+        r = outcome.result
         if hb.cancel.is_set():
             raise ReconError(ErrorCategory.CANCELLED, "Processing was cancelled.")
+        res = r.summary()
+        res.update({"engine_used": outcome.engine, "engine_chain": outcome.attempts, "chain_plan": plan.to_dict(),
+                    "fallback": outcome.fallback})
+        out = r.out_dir
         # ---- upload + register artifacts --------------------------------------
         prefix = project_prefix(org_id, project_id) + f"jobs/{jid}/attempt-{attempt_no}/"
         with Session() as db:
             proj = db.get(Project, project_id)
             if proj is None or proj.status != "active":
                 raise ReconError(ErrorCategory.CANCELLED, "The project was deleted during processing.")
-            for a in artifacts:
+            for a in r.artifacts:
                 path = out / a["path"]
                 key = prefix + a["path"]
                 storage.put_file(key, path, a["mime"])
                 stored = storage.size(key)
                 ok = stored == a["bytes"]
                 meta = {k: v for k, v in a.items() if k not in {"path", "bytes", "sha256", "mime", "kind"}}
+                meta["engine"] = outcome.engine
                 art = Artifact(project_id=project_id, job_id=jid, attempt_id=attempt_id, kind=a["kind"], name=a["path"],
                                storage_key=key, mime=a["mime"], bytes=a["bytes"], sha256=a["sha256"], meta=meta,
                                public_safe=a["kind"] in PUBLIC_KINDS)
@@ -248,34 +279,36 @@ def _run(jid, attempt_id, attempt_no, org_id, project_id, mode, upload_ids, cfg,
                 if not ok:
                     raise ReconError(ErrorCategory.ARTIFACT_INVALID, "An output file failed verification after upload.")
             # Internal (non-public) logs for operators.
-            logs_dir = ws / "work" / "logs"
-            if logs_dir.exists():
+            for logs_dir in sorted((ws / "work").glob("*/**/logs")):
                 for lf in sorted(logs_dir.glob("*.log")):
                     key = prefix + "logs/" + lf.name
                     storage.put_file(key, lf, "text/plain")
-                    db.add(Artifact(project_id=project_id, job_id=jid, attempt_id=attempt_id, kind="LOG", name=lf.name,
+                    db.add(Artifact(project_id=project_id, job_id=jid, attempt_id=attempt_id, kind="LOG", name=lf.name[:120],
                                     storage_key=key, mime="text/plain", bytes=lf.stat().st_size, sha256=sha256_file(lf),
                                     meta={}, public_safe=False))
-            # ---- tour nodes from real output (registered photos / panoramas) ----
-            _sync_nodes(db, project_id, jid, out, mode)
+            _sync_nodes(db, project_id, jid, r.tour_nodes)
             job = db.get(ReconstructionJob, jid)
             job.result = res
+            job.engine_used = outcome.engine
+            job.fallback = outcome.fallback
             att = db.get(JobAttempt, attempt_id)
             att.state, att.finished_at = "SUCCEEDED", now()
-            final = JobState(res["status"])
+            final = JobState(r.status)
             if job.state == JobState.CANCEL_REQUESTED.value and hb.cancel.is_set():
                 raise ReconError(ErrorCategory.CANCELLED, "Processing was cancelled.")
-            transition(db, job, final, attempt_id=attempt_id, data={"output_type": res["output_type"]})
-            minutes = max(1, math.ceil(float(res["metrics"].get("processing_seconds", 0)) / 60))
-            key = f"job:{jid}:reconstruction_minutes"
-            if not db.scalar(select(UsageLedger).where(UsageLedger.idempotency_key == key)):
-                db.add(UsageLedger(org_id=org_id, kind="reconstruction_minutes", quantity=minutes, unit="minute", job_id=jid,
-                                   idempotency_key=key, note=f"{mode} job, attempt {attempt_no}"))
+            transition(db, job, final, attempt_id=attempt_id, data={"output_type": r.output_type, "engine": outcome.engine,
+                                                                    "fallback": outcome.fallback})
+            for u in r.usage:
+                key = f"job:{jid}:{u['key']}"
+                if not db.scalar(select(UsageLedger).where(UsageLedger.idempotency_key == key)):
+                    db.add(UsageLedger(org_id=org_id, kind=u["kind"], quantity=u["quantity"], unit=u["unit"], job_id=jid,
+                                       idempotency_key=key, note=f"{u.get('note', '')}, attempt {attempt_no}"[:300]))
             creator = db.get(User, job.created_by) if job.created_by else None
             if creator:
+                note = f" {outcome.fallback['notice']}." if outcome.fallback else ""
                 mailer.send(db, to=creator.email, user_id=creator.id, kind="job_finished",
                             subject=f"Your reconstruction finished: {final.value.replace('_', ' ').lower()}",
-                            body=f"Project '{proj.title}' finished processing. Open it in RoomScape AI to review the result.")
+                            body=f"Project '{proj.title}' finished processing.{note} Open it in RoomScape AI to review the result.")
             db.commit()
         return final.value
     except ReconError as e:
@@ -287,20 +320,16 @@ def _run(jid, attempt_id, attempt_no, org_id, project_id, mode, upload_ids, cfg,
         return "INTERNAL"
 
 
-def _sync_nodes(db, project_id, jid, out: Path, mode: str) -> None:
+def _sync_nodes(db, project_id, jid, nodes: list[dict]) -> None:
     existing = {n.upload_id: n for n in db.scalars(select(TourNode).where(TourNode.project_id == project_id))}
-    if mode == "PANORAMA_TOUR":
-        tour = json.loads((out / "tour.json").read_text())
-        items = [(uuid.UUID(n["upload_id"]), "PANORAMA", n["image"], i) for i, n in enumerate(tour["nodes"]) if n.get("upload_id")]
-    else:
-        cams = json.loads((out / "cameras.json").read_text())
-        items = [(uuid.UUID(v["upload_id"]), "VIEWPOINT", v["name"], i) for i, v in enumerate(cams["viewpoints"]) if v.get("upload_id")]
-    for upload_id, kind, ref, i in items:
-        n = existing.get(upload_id)
-        if n:
-            n.job_id, n.ref, n.kind = jid, ref, kind
+    for i, n in enumerate(nodes):
+        upload_id = uuid.UUID(n["upload_id"])
+        cur = existing.get(upload_id)
+        if cur:
+            cur.job_id, cur.ref, cur.kind = jid, n["ref"][:200], n["kind"][:20]
         else:
-            db.add(TourNode(project_id=project_id, job_id=jid, kind=kind, ref=ref, upload_id=upload_id, sort=i))
+            db.add(TourNode(project_id=project_id, job_id=jid, kind=n["kind"][:20], ref=n["ref"][:200],
+                            upload_id=upload_id, sort=i))
 
 
 def _fail(jid: uuid.UUID, attempt_id: uuid.UUID, e: ReconError, ws: Path) -> None:

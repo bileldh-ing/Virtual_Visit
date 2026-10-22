@@ -195,6 +195,13 @@ class ReconstructionJob(Base):
     error_category: Mapped[str | None] = mapped_column(String(40))
     error_message: Mapped[str | None] = mapped_column(String(500))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # 2.0 engines: requested engine (auto | marble_world | depth_room | colmap_sparse | panorama_tour | ...),
+    # the engine that produced the result, durable provider state (operation ids) and the fallback record.
+    engine: Mapped[str | None] = mapped_column(String(40))
+    engine_used: Mapped[str | None] = mapped_column(String(40))
+    provider_state: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    fallback: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    cost_estimate: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(TS, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(TS, default=utcnow, onupdate=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(TS)

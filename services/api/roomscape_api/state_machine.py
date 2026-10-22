@@ -56,9 +56,12 @@ def _build() -> dict[JobState, set[JobState]]:
     t[JobState.QUEUED] = {JobState.INPUT_VALIDATION, JobState.CANCELLED, JobState.CANCEL_REQUESTED, JobState.FAILED}
     # Processing stages may move forward to any later processing stage (stages can be skipped),
     # back to QUEUED for a retry attempt, or to a terminal / cancel state.
+    # A later stage may also return to INPUT_VALIDATION when the engine chain falls back to the next engine.
     for i, s in enumerate(PROCESSING):
         t[s] = set(PROCESSING[i + 1:]) | {JobState.QUEUED, JobState.SUCCEEDED, JobState.PARTIAL_SUCCESS,
                                           JobState.FAILED, JobState.CANCEL_REQUESTED, JobState.CANCELLED}
+        if s != JobState.INPUT_VALIDATION:
+            t[s].add(JobState.INPUT_VALIDATION)
     t[JobState.CANCEL_REQUESTED] = {JobState.CANCELLED, JobState.FAILED, JobState.SUCCEEDED,
                                     JobState.PARTIAL_SUCCESS}
     # Terminal states only allow an explicit admin/user retry which creates a new attempt.
