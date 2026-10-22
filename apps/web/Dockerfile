@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # RoomScape web (Next.js standalone). Build context: apps/web
-FROM node:22-alpine AS deps
+FROM node:25-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@12.14.0 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 RUN corepack enable && corepack prepare pnpm@12.14.0 --activate
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -14,7 +14,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:22-alpine AS run
+FROM node:25-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S app && adduser -S -G app -u 10001 app
