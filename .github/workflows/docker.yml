@@ -47,12 +47,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/roomscape-${{ matrix.name }}:sha-${{ github.sha }}
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: "0"
-          format: table
-        continue-on-error: true
+      - name: Install Trivy
+        if: github.event_name == 'push'
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Trivy image scan (report only)
+        if: github.event_name == 'push'
+        run: trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 ghcr.io/${{ github.repository_owner }}/roomscape-${{ matrix.name }}:sha-$(echo $GITHUB_SHA | cut -c1-7)

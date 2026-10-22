@@ -3,19 +3,38 @@ updates:
   - package-ecosystem: npm
     directory: /apps/web
     schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       react-three: { patterns: ["@react-three/*", "three", "@types/three"] }
       next: { patterns: ["next", "eslint-config-next", "react", "react-dom", "@types/react*"] }
   - package-ecosystem: pip
     directory: /services/api
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /services/reconstruction
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directories: ["/services/api", "/services/worker", "/apps/web"]
     schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

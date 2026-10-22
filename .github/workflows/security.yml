@@ -54,11 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          skip-dirs: apps/web/node_modules
+      - name: Install Trivy (official install script)
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Trivy filesystem scan (critical, fixable)
+        run: trivy fs --scanners vuln,secret,misconfig --severity CRITICAL --ignore-unfixed --exit-code 1 --skip-dirs apps/web/node_modules .

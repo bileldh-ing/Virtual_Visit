@@ -26,10 +26,10 @@ jobs:
       - run: pip install -e services/reconstruction
       - name: Fetch fixture (SHA-256 verified)
         run: python scripts/fetch_fixture.py eyeful_apartment_48
-      - name: Reconstruct a 16-photo subset and verify
+      - name: Reconstruct a 21-photo subset and verify
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python scripts/recon_acceptance.py --count 16 --out recon-out
+        run: python scripts/recon_acceptance.py --from-position 82 --out recon-out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
