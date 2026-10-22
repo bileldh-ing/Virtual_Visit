@@ -88,3 +88,14 @@ export function easeInOut(t: number): number {
 export function wrap(i: number, n: number): number {
   return n <= 0 ? 0 : ((i % n) + n) % n;
 }
+
+/** Distance (viewer units) under which camera markers are hidden in walk mode. */
+export const WALK_MARKER_HIDE_DISTANCE = 0.3;
+
+/**
+ * Whether a camera-frustum marker should be drawn. In walk mode the camera stands
+ * at capture positions, so markers within WALK_MARKER_HIDE_DISTANCE would cover the view.
+ */
+export function markerVisible(distance: number, mode: "orbit" | "walk", hideWithin = WALK_MARKER_HIDE_DISTANCE): boolean {
+  return mode !== "walk" || distance >= hideWithin;
+}

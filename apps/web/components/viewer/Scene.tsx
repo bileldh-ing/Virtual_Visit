@@ -4,7 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import * as THREE from "three";
-import { cameraBasis, easeInOut, toViewer, type ViewerTransform, type Vec3 } from "@/lib/viewer-math";
+import { cameraBasis, easeInOut, markerVisible, toViewer, type ViewerTransform, type Vec3 } from "@/lib/viewer-math";
 import type { Viewpoint } from "@/lib/schemas";
 
 export type ViewMode = "orbit" | "walk";
@@ -61,8 +61,14 @@ const FRUSTUM = (() => {
   return new Float32Array(seg);
 })();
 
-function Frustum({ pose, active, i, onSelect }: { pose: Pose; active: boolean; i: number; onSelect: (i: number) => void }) {
+function Frustum({ pose, active, i, mode, onSelect }: { pose: Pose; active: boolean; i: number; mode: ViewMode; onSelect: (i: number) => void }) {
   const [hover, setHover] = useState(false);
+  const group = useRef<THREE.Group>(null);
+  // In walk mode the camera sits at a capture position; a marker of that (or a
+  // co-located) camera would fill the whole view, so hide markers that are too close.
+  useFrame(({ camera }) => {
+    if (group.current) group.current.visible = markerVisible(camera.position.distanceTo(pose.position), mode);
+  });
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(FRUSTUM, 3));
@@ -70,7 +76,7 @@ function Frustum({ pose, active, i, onSelect }: { pose: Pose; active: boolean; i
   }, []);
   const color = active ? "#f4efe4" : hover ? "#7fe3d3" : "#45cfbb";
   return (
-    <group position={pose.position} quaternion={pose.quaternion}>
+    <group ref={group} position={pose.position} quaternion={pose.quaternion}>
       <lineSegments geometry={geom}>
         <lineBasicMaterial color={color} transparent opacity={active ? 1 : 0.75} />
       </lineSegments>
@@ -229,7 +235,7 @@ export function Scene(props: SceneProps) {
     >
       <fog attach="fog" args={["#070b12", 18, 60]} />
       <Points positions={positions} colors={colors} size={pointSize} />
-      {showFrustums && poses.map((p, i) => <Frustum key={i} pose={p} i={i} active={i === index} onSelect={onSelect} />)}
+      {showFrustums && poses.map((p, i) => <Frustum key={i} pose={p} i={i} mode={mode} active={i === index} onSelect={onSelect} />)}
       <gridHelper args={[30, 30, "#1d2a3e", "#141e2e"]} position={[0, floorY, 0]} />
       <Rig poses={poses} index={index} mode={mode} onCamera={onCamera} onArrive={onArrive} />
     </Canvas>

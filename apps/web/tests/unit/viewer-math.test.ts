@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraBasis, headingOnMap, minimapUV, toViewer, transformPositions, VIEW_SIZE, wrap, type ViewerTransform } from "@/lib/viewer-math";
+import { cameraBasis, headingOnMap, markerVisible, minimapUV, toViewer, transformPositions, VIEW_SIZE, wrap, type ViewerTransform } from "@/lib/viewer-math";
 
 const near = (a: number[], b: number[]) => a.forEach((v, i) => expect(v).toBeCloseTo(b[i]));
 const I: number[][] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
@@ -39,5 +39,17 @@ describe("viewer math", () => {
     expect(wrap(-1, 5)).toBe(4);
     expect(wrap(7, 5)).toBe(2);
     expect(wrap(3, 0)).toBe(0);
+  });
+});
+
+describe("markerVisible", () => {
+  it("always shows markers in orbit mode", () => {
+    expect(markerVisible(0, "orbit")).toBe(true);
+  });
+  it("hides markers close to the camera in walk mode", () => {
+    expect(markerVisible(0.05, "walk")).toBe(false);
+    expect(markerVisible(0.29, "walk")).toBe(false);
+    expect(markerVisible(0.3, "walk")).toBe(true);
+    expect(markerVisible(2, "walk")).toBe(true);
   });
 });
