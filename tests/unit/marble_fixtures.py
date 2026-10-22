@@ -36,7 +36,7 @@ def png_bytes(w=64, h=32) -> bytes:
 
 def world_body() -> dict:
     return {
-        "id": WORLD_ID, "display_name": "RoomScape test", "world_marble_url": f"https://marble.worldlabs.ai/world/{WORLD_ID}",
+        "world_id": WORLD_ID, "display_name": "RoomScape test", "world_marble_url": f"https://marble.worldlabs.ai/world/{WORLD_ID}",
         "model": "marble-1.0-draft",
         "assets": {
             "caption": "A living room.", "thumbnail_url": f"{CDN}/thumb.png",
@@ -93,7 +93,7 @@ class FakeMarble:
             body = json.loads(request.content)
             n = self.count("POST", "/marble/v1/media-assets:prepare_upload")
             return httpx.Response(200, json={
-                "media_asset": {"id": f"ma-{n}", "file_name": body["file_name"], "kind": "image", "extension": body["extension"]},
+                "media_asset": {"media_asset_id": f"ma-{n}", "file_name": body["file_name"], "kind": "image", "extension": body["extension"]},
                 "upload_info": {"upload_url": f"https://upload.test.invalid/u/{n}", "upload_method": "PUT",
                                 "required_headers": {"x-goog-content-length-range": "0,1048576000"}}})
         if path == "/marble/v1/worlds:generate":
@@ -109,7 +109,10 @@ class FakeMarble:
                 return httpx.Response(200, json={"operation_id": OP_ID, "done": True, "error": self.operation_error,
                                                  "metadata": meta, "response": None})
             return httpx.Response(200, json={"operation_id": OP_ID, "done": done, "error": None, "metadata": meta,
-                                             "response": world_body() if done else None})
+                                             "response": world_body() if done else None,
+                                             "cost": {"total_credits": 250, "line_items": [
+                                                 {"name": "pano generation", "credits": 100},
+                                                 {"name": "draft world generation", "credits": 150}]} if done else None})
         if path == f"/marble/v1/worlds/{WORLD_ID}":
             return httpx.Response(200, json={"world": world_body()})
         if path == "/marble/v1/worlds:list":

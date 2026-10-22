@@ -277,6 +277,14 @@ class MarbleClient:
         return {"bytes": n, "sha256": h.hexdigest()}
 
 
+def _id(obj: dict | None, *keys: str) -> str | None:
+    """Ids per the OpenAPI spec (``media_asset_id``, ``world_id``); the quickstart examples show ``id``."""
+    for k in (*keys, "id"):
+        if obj and obj.get(k):
+            return str(obj[k])
+    return None
+
+
 # ------------------------------------------------------------------------------------------ inputs
 
 def common_aspect(sizes: list[tuple[int, int]]) -> float:
@@ -421,6 +429,9 @@ class MarbleWorldEngine(ReconstructionEngine):
         client = MarbleClient(self.cfg, transport=self.transport, sleep=self.sleep)
         try:
             return self._run(ctx, client, cp, save, t_start)
+        except (KeyError, TypeError, AttributeError) as e:  # response shape we do not understand: typed, no blind retry
+            raise ReconError(ErrorCategory.PROVIDER_FAILED, "World Labs returned an unexpected response.",
+                             f"{type(e).__name__}: {e}") from e
         finally:
             client.close()
 
@@ -458,11 +469,12 @@ class MarbleWorldEngine(ReconstructionEngine):
             prepared = prepare_marble_images(chosen, work / "inputs") if kind != "pano" else []
             if kind == "multi-image" and self.cfg.azimuths == "colmap" and self.pose_solver is not None:
                 try:
-                    vps = self.pose_solver([p["path"] for p in prepared], work / "poses")
-                    by_file = azimuths_from_viewpoints(vps)
-                    for p in prepared:
-                        if p["path"].name in by_file:
-                            azimuths[p["path"].name] = round(by_file[p["path"].name], 1)
+                    # Solve on the originals (full resolution, more features); map back to the prepared copies.
+                    vps = self.pose_solver([c.path for c in chosen], work / "poses")
+                    by_file = {Path(k).stem: v for k, v in azimuths_from_viewpoints(vps).items()}
+                    for c, p in zip(chosen, prepared, strict=True):
+                        if c.path.stem in by_file:
+                            azimuths[p["path"].name] = round(by_file[c.path.stem], 1)
                 except ReconError as e:  # azimuths are optional: Auto Layout still works without them
                     ctx.on_stage("INPUT_VALIDATION", "progress", {"azimuths": "unavailable", "reason": e.category.value})
             timings["prepare_s"] = round(self.clock() - t0, 2)
@@ -479,7 +491,7 @@ class MarbleWorldEngine(ReconstructionEngine):
             if tag:  # died after the paid call but before checkpointing the operation: adopt, never re-pay
                 found = client.find_world_by_tag(tag)
                 if found:
-                    save(world_id=found.get("id") or found.get("world_id"), adopted_by_tag=True)
+                    save(world_id=_id(found, "world_id"), adopted_by_tag=True)
             if not cp.get("world_id"):
                 t0 = self.clock()
                 media_ids = list(cp.get("media_asset_ids") or [])
@@ -490,7 +502,11 @@ class MarbleWorldEngine(ReconstructionEngine):
                         ext = {"jpeg": "jpg", "png": "png", "webp": "webp"}.get(sniff(Path(p["path"])), "jpg")
                         prep = client.prepare_upload(Path(p["name"]).stem[:50] + "." + ext, ext)
                         client.put_signed(prep["upload_info"], Path(p["path"]).read_bytes())
-                        media_ids.append(prep["media_asset"]["id"])
+                        mid = _id(prep.get("media_asset"), "media_asset_id")
+                        if not mid or not (prep.get("upload_info") or {}).get("upload_url"):
+                            raise ReconError(ErrorCategory.PROVIDER_FAILED, "World Labs returned an unexpected response.",
+                                             f"prepare_upload keys: {sorted(prep)}")
+                        media_ids.append(mid)
                     save(media_asset_ids=media_ids)
                 timings["upload_s"] = round(self.clock() - t0, 2)
                 body = self._request_body(ctx, kind, media_ids, prepared, azimuths)
@@ -503,8 +519,11 @@ class MarbleWorldEngine(ReconstructionEngine):
                 timings["generate_call_s"] = round(self.clock() - t0, 2)
                 if "operation_id" in op:
                     save(operation_id=op["operation_id"], operation_started=time.time())
-                else:  # adopted world from ambiguity check
-                    save(world_id=op.get("id") or op.get("world_id"), adopted_by_tag=True)
+                elif _id(op, "world_id"):  # adopted world from ambiguity check
+                    save(world_id=_id(op, "world_id"), adopted_by_tag=True)
+                else:
+                    raise ReconError(ErrorCategory.PROVIDER_FAILED, "World Labs returned an unexpected response.",
+                                     f"generate keys: {sorted(op)}")
         self._check_cancel(ctx)
 
         # 3. poll the operation
@@ -513,7 +532,7 @@ class MarbleWorldEngine(ReconstructionEngine):
             t0 = self.clock()
             world = self._poll(ctx, client, cp, save)
             timings["generation_wait_s"] = round(self.clock() - t0, 2)
-        world_id = cp.get("world_id") or (world or {}).get("id")
+        world_id = cp.get("world_id") or _id(world, "world_id")
         if not world_id:
             raise ReconError(ErrorCategory.PROVIDER_FAILED, "World Labs did not return a world.", json.dumps(cp)[:300])
         full = client.get_world(world_id)
@@ -572,7 +591,8 @@ class MarbleWorldEngine(ReconstructionEngine):
             "azimuths_known": sum(1 for p in photo_meta if p["azimuth_deg"] is not None),
             "estimated_credits": cp.get("estimate_credits", est.credits),
             "credits_before": cp.get("credits_before"), "credits_after": credits_after,
-            "measured_credits": measured, "timings_s": timings, "processing_seconds": elapsed,
+            "measured_credits": measured, "settled_credits": cp.get("settled_credits"),
+            "cost_line_items": cp.get("cost_line_items"), "timings_s": timings, "processing_seconds": elapsed,
             "resumed": resumed, "adopted_by_tag": bool(cp.get("adopted_by_tag")),
             "splat_points": {k: v.get("num_points") for k, v in asset_meta.items() if k.startswith("spz_")},
             "collider_triangles": (asset_meta.get("collider") or {}).get("triangles"),
@@ -587,11 +607,16 @@ class MarbleWorldEngine(ReconstructionEngine):
         entries.append({"path": "provider_calls.json", "kind": "PROVIDER_LOG"})
         manifest = build_manifest(out, entries, {"name": self.name, "provider": "worldlabs", "model": world_doc["model"]})
         ctx.on_stage("ARTIFACT_VALIDATION", "completed", {"artifacts": len(manifest["artifacts"])})
-        charged = measured if measured and measured > 0 else float(cp.get("estimate_credits") or est.credits or 0)
+        settled = cp.get("settled_credits")
+        if settled is not None:
+            charged, basis = float(settled), "settled operation cost"
+        elif measured and measured > 0:
+            charged, basis = measured, "measured balance delta"
+        else:
+            charged, basis = float(cp.get("estimate_credits") or est.credits or 0), "list price"
         usage = [{"kind": "marble_credits", "quantity": charged, "unit": "credit",
                   "key": f"marble:{cp.get('operation_id') or world_id}",
-                  "note": f"World Labs {world_doc['model']} {world_doc['input_type']} world {world_id}"
-                          + (" (measured balance delta)" if measured and measured > 0 else " (list price)")}]
+                  "note": f"World Labs {world_doc['model']} {world_doc['input_type']} world {world_id} ({basis})"}]
         return EngineResult(status="SUCCEEDED", output_type=self.output_type, honesty=self.honesty.value,
                             metrics=metrics, artifacts=manifest["artifacts"], out_dir=out,
                             engine={"name": self.name, "label": self.label, "provider": "worldlabs",
@@ -675,9 +700,11 @@ class MarbleWorldEngine(ReconstructionEngine):
                     raise ReconError(ErrorCategory.PROVIDER_FAILED, "World Labs could not generate this world.",
                                      f"code={err.get('code')} message={str(err.get('message'))[:300]}")
                 resp = op.get("response") or {}
-                if resp.get("id") and not cp.get("world_id"):
-                    save(world_id=resp["id"])
-                save(operation_done=True)
+                if _id(resp, "world_id") and not cp.get("world_id"):
+                    save(world_id=_id(resp, "world_id"))
+                cost = op.get("cost") or {}
+                save(operation_done=True, settled_credits=cost.get("total_credits"),
+                     cost_line_items=cost.get("line_items"))
                 return resp
             self.sleep(delay)
             delay = min(self.cfg.poll_max_s, delay * 1.5)

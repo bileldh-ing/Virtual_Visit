@@ -67,7 +67,8 @@ def test_happy_path_generates_downloads_and_validates(tmp_path):
     assert body["world_prompt"]["type"] == "multi-image" and body["world_prompt"]["reconstruct_images"] is True
     assert len(body["world_prompt"]["multi_image_prompt"]) == 4 and body["tags"] == ["rs-job-1234"]
     assert body["permission"] == {"public": False}
-    assert r.metrics["measured_credits"] == 250 and r.usage[0]["quantity"] == 250
+    assert r.metrics["measured_credits"] == 250 and r.metrics["settled_credits"] == 250 and r.usage[0]["quantity"] == 250
+    assert "settled operation cost" in r.usage[0]["note"]
     assert r.usage[0]["key"] == f"marble:{OP_ID}"
     world = json.loads((r.out_dir / "world.json").read_text())
     assert world["world_id"] == WORLD_ID and world["semantics_metadata"]["metric_scale_factor"] == 1.1
@@ -97,7 +98,7 @@ def test_resume_after_worker_restart_polls_without_paying_again(tmp_path):
 
 def test_crash_between_paid_call_and_checkpoint_adopts_world_by_tag(tmp_path):
     fake = FakeMarble(tmp_path)
-    fake.listed = [{"id": WORLD_ID}]
+    fake.listed = [{"id": WORLD_ID}]  # quickstart-style "id" is accepted as well as "world_id"
     cp = {"intent_tag": "rs-job-1234", "media_asset_ids": ["ma-0", "ma-1"]}
     r = engine(fake).run(ctx(tmp_path, photos(tmp_path, 2), checkpoint=cp))
     assert r.status == "SUCCEEDED" and r.metrics["adopted_by_tag"] is True
@@ -107,7 +108,7 @@ def test_crash_between_paid_call_and_checkpoint_adopts_world_by_tag(tmp_path):
 def test_ambiguous_500_on_generate_checks_tag_before_retrying(tmp_path):
     fake = FakeMarble(tmp_path)
     fake.overrides[("POST", "/marble/v1/worlds:generate")] = [500]
-    fake.listed = [{"id": WORLD_ID}]
+    fake.listed = [{"world_id": WORLD_ID}]
     r = engine(fake).run(ctx(tmp_path, photos(tmp_path, 2)))
     assert r.status == "SUCCEEDED" and fake.count("POST", "/marble/v1/worlds:generate") == 1
 
@@ -261,3 +262,12 @@ def test_single_pano_uses_image_prompt_with_is_pano(tmp_path):
     engine(fake).run(ctx(tmp_path, [EngineInput(path=p, name="pano.jpg", upload_id="u", is_panorama=True)]))
     wp = fake.generated_bodies[0]["world_prompt"]
     assert wp["type"] == "image" and wp["is_pano"] is True
+
+
+def test_unexpected_response_shape_is_typed_provider_failure(tmp_path):
+    fake = FakeMarble(tmp_path)
+    fake.overrides[("POST", "/marble/v1/media-assets:prepare_upload")] = [httpx.Response(200, json={"weird": True})]
+    with pytest.raises(ReconError) as e:
+        engine(fake).run(ctx(tmp_path, photos(tmp_path, 2)))
+    assert e.value.category == ErrorCategory.PROVIDER_FAILED
+    assert fake.count("POST", "/marble/v1/worlds:generate") == 0
