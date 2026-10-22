@@ -151,7 +151,7 @@ def analyze_bytes(name: str, data: bytes) -> tuple[ImageQuality, np.ndarray | No
     gray = np.asarray(small.convert("L"))
     # Normalise contrast (1st..99th percentile) so dim-but-sharp photos are not flagged as blurry.
     lo, hi = np.percentile(gray, 1), np.percentile(gray, 99)
-    norm = np.clip((gray.astype(np.float32) - lo) / max(float(hi - lo), 1.0) * 255.0, 0, 255)
+    norm = np.clip((gray.astype(np.float32) - lo) / max(float(hi - lo), 64.0) * 255.0, 0, 255)
     q.blur_score = round(_laplacian_variance(norm), 2)
     q.mean_luminance = round(float(gray.mean()), 2)
     q.dark_fraction = round(float((gray < 16).mean()), 4)

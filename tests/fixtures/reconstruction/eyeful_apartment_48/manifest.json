@@ -1,0 +1,309 @@
+{
+ "name": "eyeful_apartment_48",
+ "description": "48 undistorted interior photos (rig cameras 10, 11, 12; first 16 capture positions each) of the 'apartment' scene.",
+ "source": "https://github.com/facebookresearch/EyefulTower",
+ "copyright": "Copyright (c) Meta Platforms, Inc. and affiliates.",
+ "license": "MIT",
+ "license_url": "https://github.com/facebookresearch/EyefulTower/blob/main/LICENSE",
+ "retrieved": "2026-10-22",
+ "expected": {
+  "status": [
+   "SUCCEEDED",
+   "PARTIAL_SUCCESS"
+  ],
+  "min_registered": 10,
+  "min_sparse_points": 500,
+  "max_mean_reprojection_error_px": 2.0
+ },
+ "notes": "Low-light interior; expect UNDEREXPOSED warnings. Observed locally: 42/48 registered, 3,519 points, 0.598 px (COLMAP 3.10 CPU).",
+ "files": [
+  {
+   "name": "10_DSC0001.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0001.jpg",
+   "sha256": "b41cfbbaa03df7d8abbc967e9d47eb550bb8d1da30b00b59ae490b5d579c9ce7",
+   "bytes": 1411940
+  },
+  {
+   "name": "10_DSC0010.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0010.jpg",
+   "sha256": "cc7ad56ea019e33c28ad6bf806fb63dda8e1e02f6d495d1ca13be564b46f983c",
+   "bytes": 1416453
+  },
+  {
+   "name": "10_DSC0019.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0019.jpg",
+   "sha256": "4c179b682b54301a6534981f6586e372587e96d1cf74609c33cea23a586c99c4",
+   "bytes": 1411698
+  },
+  {
+   "name": "10_DSC0028.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0028.jpg",
+   "sha256": "38d6b04bcd5b17063f03a5c4c9193bbf7f93719b4f4434a5d7a16b59df7ddafa",
+   "bytes": 1452323
+  },
+  {
+   "name": "10_DSC0037.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0037.jpg",
+   "sha256": "0b866dc6ee1f9e565a5160a4a208ef277c43f414eb04cd0476f51b7949c24d43",
+   "bytes": 1556981
+  },
+  {
+   "name": "10_DSC0046.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0046.jpg",
+   "sha256": "e050838030536e1cc8cb683b2e71ae0818b6f3fb6e502d71f01c1d5aa86918d9",
+   "bytes": 1542155
+  },
+  {
+   "name": "10_DSC0055.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0055.jpg",
+   "sha256": "87663a6657f117a1831c6485081ff0dc50bb048bf4045b99928caac02b980eba",
+   "bytes": 1509761
+  },
+  {
+   "name": "10_DSC0064.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0064.jpg",
+   "sha256": "c8c5bbcd604619beaf39f443ee871ade0fc2407a24b16c1a17cd254b3f7ae8b8",
+   "bytes": 1483627
+  },
+  {
+   "name": "10_DSC0073.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0073.jpg",
+   "sha256": "1e98836e2ec316212b9c55ebe254abc9d0c4e7213ef0df52ae74d77a80c4a310",
+   "bytes": 1451070
+  },
+  {
+   "name": "10_DSC0082.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0082.jpg",
+   "sha256": "931e2713ce9b8787b67a4d4f677b8f26978f78379f633f0ab719e154f0d0aa28",
+   "bytes": 1413077
+  },
+  {
+   "name": "10_DSC0091.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0091.jpg",
+   "sha256": "53db4b55609c7b677b68ba1f23fda1b55684abbb4c3e70f9a10b0f747c8b9e6f",
+   "bytes": 1403861
+  },
+  {
+   "name": "10_DSC0100.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0100.jpg",
+   "sha256": "388f1ef235ccab7fb5aa87b07973a3ff5151d62817b71e2e2d3067adbd0047a8",
+   "bytes": 1435090
+  },
+  {
+   "name": "10_DSC0109.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0109.jpg",
+   "sha256": "3f3031a6a22e95a7e4fb6db2e9f2706d494b0789cdc630e15a944b9100d2ef78",
+   "bytes": 1435420
+  },
+  {
+   "name": "10_DSC0118.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0118.jpg",
+   "sha256": "3aebfbe2743cb3ba548aa0e9d92e0c31b8aa11ae6f8a40f33eea8c2867fe4776",
+   "bytes": 1335906
+  },
+  {
+   "name": "10_DSC0127.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0127.jpg",
+   "sha256": "577981d61a1fdbcaebea886580e28e911998e39bcaa08be15d92edc45eaa7a46",
+   "bytes": 1407959
+  },
+  {
+   "name": "10_DSC0136.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/10_DSC0136.jpg",
+   "sha256": "c0399dd46fde773f62a2fa5cf9a579dd3e84397c86f61c709f3302733ede6f27",
+   "bytes": 1345009
+  },
+  {
+   "name": "11_DSC0001.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0001.jpg",
+   "sha256": "0b55822a7638bc947abb34804a59401970529f8118025a2735ce47fc0b7f190f",
+   "bytes": 1190567
+  },
+  {
+   "name": "11_DSC0010.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0010.jpg",
+   "sha256": "2a9b8eeff60d4a01fb33894e833b66bb9fdeeb927f0eb48e6589f20fd36368e6",
+   "bytes": 1180871
+  },
+  {
+   "name": "11_DSC0019.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0019.jpg",
+   "sha256": "24f0ea5378db57186e625a0f2c7eadb04344eafe0b5d4e24ddb44fa496c3204c",
+   "bytes": 1202381
+  },
+  {
+   "name": "11_DSC0028.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0028.jpg",
+   "sha256": "42a3cc8e3f01773d8830799cdaceb58667671c7dbd683d904d9be3ca607b330f",
+   "bytes": 1249587
+  },
+  {
+   "name": "11_DSC0037.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0037.jpg",
+   "sha256": "ab510e614b2b4b34d802bd40dc8ee0c747c26bdd60b5bb77cff8b123e35c1f60",
+   "bytes": 1287355
+  },
+  {
+   "name": "11_DSC0046.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0046.jpg",
+   "sha256": "38acd30e2f3bd29c0b634a63991726d3d31fe15b2847f2c94a9c9fc661518202",
+   "bytes": 1308521
+  },
+  {
+   "name": "11_DSC0055.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0055.jpg",
+   "sha256": "ba03221aaa12df6ca72fae2f511d7feac04805efd5808201a3fd15c3665de1f5",
+   "bytes": 1484506
+  },
+  {
+   "name": "11_DSC0064.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0064.jpg",
+   "sha256": "3dfcf23158df378b79af6957fe5092133204a254b79f170d866fe0426af21efc",
+   "bytes": 1551143
+  },
+  {
+   "name": "11_DSC0073.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0073.jpg",
+   "sha256": "61778faa26227508286ca57bd13087f59d33c3d36375a460b38b9991fa047730",
+   "bytes": 1584865
+  },
+  {
+   "name": "11_DSC0082.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0082.jpg",
+   "sha256": "4e8957fbf1863255fe122baa2001932d1ee12dd4a30e33c3928d5fcb525627fa",
+   "bytes": 1584427
+  },
+  {
+   "name": "11_DSC0091.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0091.jpg",
+   "sha256": "b905d453c857590d6d961080ca8d2f34f29397d3fbed3929cdf3e89fed291a20",
+   "bytes": 1568731
+  },
+  {
+   "name": "11_DSC0100.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0100.jpg",
+   "sha256": "9f9467fab121f0ee1492c54262d7c7eeaa5332df88bbf3d974e210653be8e48e",
+   "bytes": 1543676
+  },
+  {
+   "name": "11_DSC0109.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0109.jpg",
+   "sha256": "54ab69d8c710d4f0af3f425438735df8417f8c4e5bd6651ebfb6692a56c100f2",
+   "bytes": 1528568
+  },
+  {
+   "name": "11_DSC0118.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0118.jpg",
+   "sha256": "506dfa2745c3532fa7abb5e9887a358d8c894cc1a7868fddd9d616843caaa6d1",
+   "bytes": 1517685
+  },
+  {
+   "name": "11_DSC0127.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0127.jpg",
+   "sha256": "2b9467d6ca2a52e3885006bf18b4de7b9927ba854547c62953a923c3e94e6d82",
+   "bytes": 1498435
+  },
+  {
+   "name": "11_DSC0136.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/11_DSC0136.jpg",
+   "sha256": "4b018ad6adfbaed6a03c3e6b06cffa0f9de97db5f6d4d09a401f7c111022cd44",
+   "bytes": 1522546
+  },
+  {
+   "name": "12_DSC0001.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0001.jpg",
+   "sha256": "c913e3b4530afcfaaf5068467e7c792725133b114086549d073a9d9da3161390",
+   "bytes": 1236462
+  },
+  {
+   "name": "12_DSC0010.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0010.jpg",
+   "sha256": "5af2fea897fd1a8e16ae3b7f89d9020519d94e67d1335830435c920e35538b08",
+   "bytes": 1307833
+  },
+  {
+   "name": "12_DSC0019.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0019.jpg",
+   "sha256": "3ad01b7cc2bf3948045edf8efef9f20adbefe98b0d56a1c6a2fcffdb7fea944a",
+   "bytes": 1334900
+  },
+  {
+   "name": "12_DSC0028.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0028.jpg",
+   "sha256": "849c626a985ce025ad6fda73b2e3457c659a55d5d7476702095a4674518a812d",
+   "bytes": 1340571
+  },
+  {
+   "name": "12_DSC0037.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0037.jpg",
+   "sha256": "dbfd35724d42bcc5e6938754a17d3e125e8637eb9c3bd0d1995cb403832cf711",
+   "bytes": 1333011
+  },
+  {
+   "name": "12_DSC0046.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0046.jpg",
+   "sha256": "c842c9c46c843037ebc3ab52a607d3858574cf452ae61054feb420a9cff37566",
+   "bytes": 1336021
+  },
+  {
+   "name": "12_DSC0055.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0055.jpg",
+   "sha256": "253869f79f8764755a512bd75461b844a8f09d5caa4b9887f8132b7355b62e00",
+   "bytes": 1338984
+  },
+  {
+   "name": "12_DSC0064.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0064.jpg",
+   "sha256": "ad47e0af381fc875db43c0f981c9c7ce2177356e3a3e7ba347f1da832de95d2c",
+   "bytes": 1370932
+  },
+  {
+   "name": "12_DSC0073.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0073.jpg",
+   "sha256": "945f147a1899b1729504548d223d89455a7b584558afa60d9eb27e4f70102765",
+   "bytes": 1395947
+  },
+  {
+   "name": "12_DSC0082.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0082.jpg",
+   "sha256": "5eee48d1dcf1b231f33d840b1efd422ec9b31e2dfd60f7891a26e94bd80b0299",
+   "bytes": 1407587
+  },
+  {
+   "name": "12_DSC0091.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0091.jpg",
+   "sha256": "1b6b28c4edbf6f8ce4b4e8289cedfc3a59577e325aa7313f036d7d2ed9e84e29",
+   "bytes": 1409904
+  },
+  {
+   "name": "12_DSC0100.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0100.jpg",
+   "sha256": "85b62469714aedef9f7a06028db2813771659865e7350405c0d2ab1de9ee2aeb",
+   "bytes": 1395819
+  },
+  {
+   "name": "12_DSC0109.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0109.jpg",
+   "sha256": "6a65d1c520411fd6280dbe9b0166dab50f2c80f7599db117736749f6a21faf8d",
+   "bytes": 1352761
+  },
+  {
+   "name": "12_DSC0118.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0118.jpg",
+   "sha256": "3c1a3fb1aafbfd5e5c97cbafe5c3ee590e47a3ab2a4fd4f3b9f59f82283ab324",
+   "bytes": 1308079
+  },
+  {
+   "name": "12_DSC0127.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0127.jpg",
+   "sha256": "0e0b45e9c888817c9de21999b54d33c4c7b7b6f3c82aeac2381737dbe2c07551",
+   "bytes": 1387715
+  },
+  {
+   "name": "12_DSC0136.jpg",
+   "url": "https://fb-baas-f32eacb9-8abb-11eb-b2b8-4857dd089e15.s3.amazonaws.com/EyefulTower/apartment/colmap/images_4/12_DSC0136.jpg",
+   "sha256": "53db16bb4816afe8eb3013544c7ad3e4f0aa7ac87d20a0b20c12b11181400be0",
+   "bytes": 1398128
+  }
+ ]
+}
