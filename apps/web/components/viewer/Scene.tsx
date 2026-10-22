@@ -161,7 +161,8 @@ function Rig({ poses, index, mode, onCamera, onArrive }: Pick<SceneProps, "poses
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       keys.current.add(e.key.toLowerCase());
     };
-    const ku = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
+    const pressed = keys.current;
+    const ku = (e: KeyboardEvent) => pressed.delete(e.key.toLowerCase());
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -173,7 +174,7 @@ function Rig({ poses, index, mode, onCamera, onArrive }: Pick<SceneProps, "poses
       window.removeEventListener("pointerup", up);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
-      keys.current.clear();
+      pressed.clear();
     };
   }, [mode, gl, camera]);
 
