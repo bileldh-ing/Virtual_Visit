@@ -70,4 +70,10 @@ python scripts/fetch_fixture.py eyeful_apartment_48
 roomscape-recon run tests/fixtures/reconstruction/eyeful_apartment_48/images out/ --threads 2
 roomscape-recon verify out/
 ```
-CI runs the same pipeline on a 16-photo subset in `.github/workflows/recon-acceptance.yml`.
+CI runs the same pipeline on a 21-photo subset (capture positions ≥ 82, all three rig cameras) in
+`.github/workflows/recon-acceptance.yml`. First green run on a GitHub-hosted runner (4 vCPU):
+**21 photos → 14 registered, 1,389 points, 0.507 px, 31.9 s**; all 6 acceptance checks passed
+(status, registered ≥ 50 %, points ≥ 150, reprojection ≤ 2 px, dense honestly absent, manifest checksums).
+An earlier attempt using the first 16 photos of a single rig camera failed with `INSUFFICIENT_OVERLAP`
+(only 2 photos connected): consecutive positions of one camera overlap too little, which is exactly the
+capture guidance the product gives users.
