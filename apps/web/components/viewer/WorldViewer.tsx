@@ -115,6 +115,8 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
           return;
         }
         const { WorldEngine } = await import("./world-engine");
+        const dq = new URLSearchParams(window.location.search).get("detail");
+        const detail = dq === "preview" || dq === "full" ? dq : "auto";
         if (cancelled || !hostRef.current) return;
         engine = new WorldEngine(hostRef.current, w, {
           spzLow: a.spzLow?.url, spzHigh: a.spzHigh?.url !== a.spzLow?.url ? a.spzHigh?.url : undefined, room: a.room?.url, collider: a.collider?.url, pano: a.pano?.url,
@@ -135,7 +137,7 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
             el.style.top = `${Math.min(100, Math.max(0, v * 100))}%`;
             el.style.transform = `translate(-50%, -50%) rotate(${headingOnMinimap(p.yaw)}rad)`;
           },
-        });
+        }, detail);
         engineRef.current = engine;
         window.__roomscapeWorld = () => engineRef.current?.state() ?? null;
         await engine.load();

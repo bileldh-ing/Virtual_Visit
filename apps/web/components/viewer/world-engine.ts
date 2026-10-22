@@ -29,6 +29,8 @@ import {
 import type { World } from "@/lib/schemas";
 
 export type WorldUrls = { spzLow?: string; spzHigh?: string; room?: string; collider?: string; pano?: string };
+/** "auto" streams full detail on GPUs and stops at the preview on software renderers (SwiftShader, llvmpipe). */
+export type DetailPref = "auto" | "preview" | "full";
 export type Hotspot = { id: string; label: string; pose: Pose; uploadId: string | null; photoName: string; fovY?: number };
 export type MinimapInfo = { image: string; toUV: (x: number, z: number) => { u: number; v: number } };
 export type EngineEvents = {
@@ -108,8 +110,11 @@ export class WorldEngine {
   private hotspotMeshes: THREE.Object3D[] = [];
   private listeners: [EventTarget, string, EventListener, AddEventListenerOptions?][] = [];
   private resizeObs: ResizeObserver | null = null;
+  /** true when WebGL runs on a CPU rasteriser: render at lower resolution and keep the preview splats. */
+  readonly software: boolean;
+  private detail: DetailPref;
 
-  constructor(host: HTMLElement, world: World, urls: WorldUrls, ev: EngineEvents) {
+  constructor(host: HTMLElement, world: World, urls: WorldUrls, ev: EngineEvents, detail: DetailPref = "auto") {
     this.host = host;
     this.world = world;
     this.urls = urls;
@@ -118,6 +123,17 @@ export class WorldEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x0b1016, 1);
+    this.detail = detail;
+    this.software = false;
+    try {
+      const gl = this.renderer.getContext();
+      const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "";
+      this.software = /swiftshader|llvmpipe|softpipe|software/i.test(name);
+    } catch {
+      /* unknown renderer: assume hardware */
+    }
+    if (this.software) this.renderer.setPixelRatio(0.5);
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.03, 400);
     this.camera.rotation.order = "YXZ";
     host.appendChild(this.renderer.domElement);
@@ -185,7 +201,8 @@ export class WorldEngine {
     const spark = new SparkRenderer({ renderer: this.renderer });
     this.scene.add(spark);
     this.spark = spark;
-    const order = [this.urls.spzLow, this.urls.spzHigh].filter(Boolean) as string[];
+    const previewOnly = this.urls.spzLow && (this.detail === "preview" || (this.detail === "auto" && this.software));
+    const order = (previewOnly ? [this.urls.spzLow] : [this.urls.spzLow, this.urls.spzHigh]).filter(Boolean) as string[];
     let current: THREE.Object3D | null = null;
     for (let i = 0; i < order.length; i++) {
       const label = order.length > 1 && i === 0 ? "Streaming preview splats" : "Streaming full-detail splats";
@@ -202,7 +219,8 @@ export class WorldEngine {
       current = mesh;
       this.splatPoints = (mesh as unknown as { numSplats?: number }).numSplats ?? 0;
       this.scene.background = new THREE.Color(0x0b1016);
-      this.ev.onQuality?.(i === order.length - 1 ? "Full detail" : "Preview detail");
+      const last = i === order.length - 1;
+      this.ev.onQuality?.(previewOnly ? (this.software ? "Preview detail (software renderer)" : "Preview detail") : last ? "Full detail" : "Preview detail");
     }
   }
 
@@ -445,6 +463,7 @@ export class WorldEngine {
       splatPoints: this.splatPoints,
       hasCollider: Boolean(this.collider),
       touring: Boolean(this.tour),
+      software: this.software,
     };
   }
 
