@@ -105,6 +105,24 @@ def test_crash_between_paid_call_and_checkpoint_adopts_world_by_tag(tmp_path):
     assert fake.count("POST", "/marble/v1/worlds:generate") == 0
 
 
+def test_tag_adoption_happens_before_preflight_and_keeps_sent_azimuths(tmp_path):
+    """Seen live: the worker was OOM-killed during the paid generate call. The retry must adopt the world first
+    (no new credits preflight overwriting the pre-payment balance, no re-prepare), and keep the azimuths it sent."""
+    fake = FakeMarble(tmp_path)
+    fake.listed = [{"world_id": WORLD_ID}]
+    req = {"world_prompt": {"type": "multi-image", "multi_image_prompt": [
+        {"content": {"source": "media_asset", "media_asset_id": "ma-0"}},
+        {"content": {"source": "media_asset", "media_asset_id": "ma-1"}, "azimuth": 69.3}]}}
+    cp = {"intent_tag": "rs-job-1234", "media_asset_ids": ["ma-0", "ma-1"], "credits_before": 7000, "request": req}
+    saved: list[dict] = []
+    r = engine(fake).run(ctx(tmp_path, photos(tmp_path, 2), checkpoint=cp, saved=saved))
+    assert r.status == "SUCCEEDED" and r.metrics["adopted_by_tag"] is True
+    assert fake.count("POST", "/marble/v1/worlds:generate") == 0
+    assert all(c.get("credits_before") == 7000 for c in saved)
+    world = json.loads((r.out_dir / "world.json").read_text())
+    assert [p["azimuth_deg"] for p in world["input_photos"]] == [None, 69.3]
+
+
 def test_ambiguous_500_on_generate_checks_tag_before_retrying(tmp_path):
     fake = FakeMarble(tmp_path)
     fake.overrides[("POST", "/marble/v1/worlds:generate")] = [500]

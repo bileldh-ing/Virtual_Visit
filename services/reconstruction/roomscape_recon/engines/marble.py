@@ -453,17 +453,25 @@ class MarbleWorldEngine(ReconstructionEngine):
         timings: dict[str, float] = {}
         resumed = bool(cp.get("operation_id") or cp.get("world_id") or cp.get("intent_tag"))
 
+        # 0. a previous attempt died after the paid call but before checkpointing the operation: adopt the world
+        #    by its intent tag *before* anything else, so nothing is prepared, uploaded or paid for twice.
+        if cp.get("intent_tag") and not cp.get("operation_id") and not cp.get("world_id"):
+            found = client.find_world_by_tag(cp["intent_tag"])
+            if found:
+                save(world_id=_id(found, "world_id"), adopted_by_tag=True)
+
         # 1. preflight: credits (skipped when resuming an already-paid operation)
         ctx.on_stage("INPUT_VALIDATION", "started", {"engine": self.name, "resumed": resumed})
         if not cp.get("operation_id") and not cp.get("world_id"):
             balance = client.credits()
-            save(credits_before=balance)
+            if "credits_before" not in cp:  # keep the balance from before the first attempt's paid call
+                save(credits_before=balance)
             if balance < (est.credits or 0) + self.cfg.min_balance_margin:
                 raise ReconError(ErrorCategory.PROVIDER_CREDITS,
                                  "The World Labs account does not have enough credits for this world.",
                                  f"balance {balance} < estimate {est.credits}")
         prepared: list[dict] = []
-        azimuths: dict[str, float] = {}
+        azimuths: dict[str, float] = dict(cp.get("azimuths") or {}) or self._azimuths_from_request(cp.get("request"))
         if not cp.get("operation_id") and not cp.get("world_id"):
             t0 = self.clock()
             prepared = prepare_marble_images(chosen, work / "inputs") if kind != "pano" else []
@@ -478,6 +486,7 @@ class MarbleWorldEngine(ReconstructionEngine):
                 except ReconError as e:  # azimuths are optional: Auto Layout still works without them
                     ctx.on_stage("INPUT_VALIDATION", "progress", {"azimuths": "unavailable", "reason": e.category.value})
             timings["prepare_s"] = round(self.clock() - t0, 2)
+            save(azimuths=azimuths)
         ctx.on_stage("INPUT_VALIDATION", "completed",
                      {"engine": self.name, "input_type": kind, "images": len(chosen),
                       "azimuths_known": len(azimuths), "estimate_credits": est.credits})
@@ -625,6 +634,13 @@ class MarbleWorldEngine(ReconstructionEngine):
                             tour_nodes=[{"upload_id": p["upload_id"], "kind": "PHOTO_AT_AZIMUTH", "ref": p["name"]}
                                         for p in photo_meta if p["upload_id"]],
                             stages_completed=["INPUT_VALIDATION", "MESH_OR_SPLAT_GENERATION", "ARTIFACT_VALIDATION"])
+
+    @staticmethod
+    def _azimuths_from_request(req: dict | None) -> dict[str, float]:
+        """Recover the azimuths a previous attempt sent (multi_image_prompt order = marble_NN.jpg order)."""
+        items = (((req or {}).get("world_prompt") or {}).get("multi_image_prompt")) or []
+        return {f"marble_{i:02d}.jpg": float(it["azimuth"]) for i, it in enumerate(items)
+                if isinstance(it, dict) and it.get("azimuth") is not None}
 
     @staticmethod
     def _limitations() -> list[str]:
