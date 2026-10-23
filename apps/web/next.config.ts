@@ -27,6 +27,8 @@ const securityHeaders = [
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Memory-constrained build hosts can skip the in-build type check; CI's web workflow always runs `tsc --noEmit`.
+  typescript: { ignoreBuildErrors: process.env.ROOMSCAPE_SKIP_BUILD_TYPECHECK === "1" },
   reactStrictMode: true,
   experimental: {
     // The /api/* rewrite goes through the Next proxy, which buffers request bodies

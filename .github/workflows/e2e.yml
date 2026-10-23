@@ -55,7 +55,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
           cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public
-          ROOMSCAPE_API_INTERNAL_URL=http://localhost:8000 PORT=3000 nohup node .next/standalone/server.js > ../../.data/web.log 2>&1 &
+          ROOMSCAPE_E2E_FIXTURES=1 ROOMSCAPE_API_INTERNAL_URL=http://localhost:8000 PORT=3000 nohup node .next/standalone/server.js > ../../.data/web.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:3000/ >/dev/null && break; sleep 1; done
       - name: Install browsers
         working-directory: apps/web
