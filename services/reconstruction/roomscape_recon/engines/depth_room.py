@@ -531,7 +531,7 @@ class DepthRoomEngine(ReconstructionEngine):
                 img = img.resize((v.width, v.height), Image.Resampling.BICUBIC)
             disp = model.predict(img)
             dh, dw = disp.shape
-            fit: dict[str, float] = {"inliers": 0, "observations": int(len(v.obs_xy))}
+            fit: dict[str, Any] = {"inliers": 0, "observations": int(len(v.obs_xy))}
             if pose_mode == "colmap" and len(v.obs_xy) >= 8:
                 xc = (v.obs_xyz - v.C) @ v.R  # world -> camera
                 z = xc[:, 2]
@@ -592,8 +592,8 @@ class DepthRoomEngine(ReconstructionEngine):
                 zip(per_view, grids, cams_a, strict=False)):
             camf = to_final(cam[None].copy())[0]
             pf = to_final(pa.copy()).reshape(zz.shape + (3,))
-            d = pf - camf
-            down = d[..., 1] / np.maximum(np.linalg.norm(d, axis=-1), 1e-9)
+            dvec = pf - camf
+            down = dvec[..., 1] / np.maximum(np.linalg.norm(dvec, axis=-1), 1e-9)
             lower = ii > dh * 0.45
             cand = vv & lower & (down < -0.15) & (pf[..., 1] < 0.35 * EYE_HEIGHT) & (pf[..., 1] > -0.6 * EYE_HEIGHT)
             k = np.where(cand, camf[1] / np.maximum(camf[1] - pf[..., 1], 1e-6), np.nan)
