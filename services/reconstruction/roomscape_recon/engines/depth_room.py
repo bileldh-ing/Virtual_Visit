@@ -596,8 +596,8 @@ class DepthRoomEngine(ReconstructionEngine):
             down = dvec[..., 1] / np.maximum(np.linalg.norm(dvec, axis=-1), 1e-9)
             lower = ii > dh * 0.45
             cand = vv & lower & (down < -0.15) & (pf[..., 1] < 0.35 * EYE_HEIGHT) & (pf[..., 1] > -0.6 * EYE_HEIGHT)
-            k = np.where(cand, camf[1] / np.maximum(camf[1] - pf[..., 1], 1e-6), np.nan)
-            res = floor_flatten_fit((1.0 / np.maximum(zz, 1e-6))[cand], k[cand])
+            kfl = np.where(cand, camf[1] / np.maximum(camf[1] - pf[..., 1], 1e-6), np.nan)
+            res = floor_flatten_fit((1.0 / np.maximum(zz, 1e-6))[cand], kfl[cand])
             if res is None:
                 floor_fix[v.name] = {"applied": False}
                 continue
