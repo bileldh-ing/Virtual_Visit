@@ -5,6 +5,7 @@ on:
     paths: ["services/**", "tests/**", "ruff.toml", "mypy.ini", ".github/workflows/api.yml"]
   pull_request:
     paths: ["services/**", "tests/**", "ruff.toml", "mypy.ini", ".github/workflows/api.yml"]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
