@@ -129,8 +129,8 @@ The heading of the photo hotspots in Auto Layout Marble worlds is registered aga
 ## Demo video
 
 **[▶ RoomScape AI 2.0 demo — 3:12, 1280×720, 10.8 MB](https://github.com/bileldh-ing/Virtual_Visit/blob/main/docs/media/roomscape-v2-demo.mp4)** (opens GitHub's file view; use *View raw* /
-*Download* if it does not play inline). A 1920×1080 master is attached to the
-[v2.0.0 release](https://github.com/bileldh-ing/Virtual_Visit/releases/tag/v2.0.0) when available.
+*Download* if it does not play inline). Release notes:
+[v2.0.0](https://github.com/bileldh-ing/Virtual_Visit/releases/tag/v2.0.0).
 
 <video src="https://raw.githubusercontent.com/bileldh-ing/Virtual_Visit/main/docs/media/roomscape-v2-demo.mp4" controls muted width="100%"></video>
 
