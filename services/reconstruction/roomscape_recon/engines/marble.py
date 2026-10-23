@@ -50,6 +50,7 @@ from .base import (
     ReconstructionEngine,
 )
 from .formats import IMAGE_EXT, sniff, validate_glb, validate_image, validate_spz
+from .heading import estimate_heading_offset
 
 DEFAULT_BASE_URL = "https://api.worldlabs.ai"
 MAX_INPUT_BYTES = 20 * 1024 * 1024  # World Labs prompt-image limit
@@ -573,6 +574,16 @@ class MarbleWorldEngine(ReconstructionEngine):
             fname = f"marble_{i:02d}.jpg"
             photo_meta.append({"name": inp.name, "upload_id": inp.upload_id, "azimuth_deg": azimuths.get(fname),
                                "azimuth_source": "colmap" if fname in azimuths else None})
+        # Auto Layout picks its own world frame: register the photos against the returned panorama (free, local)
+        heading: dict | None = None
+        pano_file = (asset_meta.get("pano") or {}).get("file")
+        placed = [(inp.path, float(azimuths[f"marble_{i:02d}.jpg"])) for i, inp in enumerate(chosen)
+                  if f"marble_{i:02d}.jpg" in azimuths]
+        if pano_file and kind == "multi-image" and len(placed) >= 2:
+            try:
+                heading = estimate_heading_offset(out / pano_file, placed).as_dict()
+            except Exception as e:  # alignment is best-effort; never fail a paid world over it
+                heading = {"offset_deg": None, "confident": False, "error": type(e).__name__}
         world_doc = {
             "schema": "roomscape.world/1",
             "engine": self.name,
@@ -587,7 +598,9 @@ class MarbleWorldEngine(ReconstructionEngine):
             "input_type": cp.get("input_type", kind),
             "input_photos": photo_meta,
             "photo_viewpoints_note": "Marble does not return input camera poses; photo hotspots are placed at the world "
-                                     "origin at their COLMAP-derived azimuth (approximate).",
+                                     "origin at their COLMAP-derived azimuth (approximate), rotated by "
+                                     "heading_alignment.offset_deg when the panorama match is confident.",
+            "heading_alignment": heading,
             "assets": asset_meta,
             "measurement": {"enabled": False, "reason": "AI-generated geometry: dimensions are not reliable."},
         }

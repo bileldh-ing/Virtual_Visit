@@ -162,6 +162,7 @@ export const WorldSchema = z
     viewpoints: z
       .array(z.object({ name: z.string(), upload_id: z.string().nullable(), position: z.array(z.number()).length(3), rotation_c2w: z.array(z.array(z.number())), fov_y_deg: z.number(), aspect: z.number() }))
       .optional(),
+    heading_alignment: z.object({ offset_deg: z.number().nullable(), confident: z.boolean() }).passthrough().nullable().optional(),
     spawn: z.object({ position: z.array(z.number()).length(3), yaw_deg: z.number() }).optional(),
     eye_height: z.number().optional(),
     measurement: z.object({ enabled: z.boolean(), reason: z.string() }).optional(),

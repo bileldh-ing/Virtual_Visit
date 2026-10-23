@@ -308,12 +308,15 @@ export class WorldEngine {
         });
       }
     } else if (w.input_photos?.length) {
+      // Auto Layout worlds use their own frame; the worker registers photos against the panorama and reports one offset
+      const ha = w.heading_alignment;
+      const offset = ha?.confident && ha.offset_deg != null ? ha.offset_deg : 0;
       for (const ph of w.input_photos) {
         if (ph.azimuth_deg == null) continue; // position unknown: listed in the filmstrip, not placed
         hs.push({
           id: ph.name,
           label: ph.name.replace(/\.[a-z]+$/i, ""),
-          pose: { p: [this.player.eye.x, this.player.eye.y, this.player.eye.z], yaw: yawFromAzimuth(ph.azimuth_deg), pitch: 0 },
+          pose: { p: [this.player.eye.x, this.player.eye.y, this.player.eye.z], yaw: yawFromAzimuth(ph.azimuth_deg + offset), pitch: 0 },
           uploadId: ph.upload_id,
           photoName: ph.name,
         });

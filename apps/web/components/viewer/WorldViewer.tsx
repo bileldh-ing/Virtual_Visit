@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorldSchema, type Artifact, type Fallback, type Tour, type World } from "@/lib/schemas";
 import { headingOnMinimap } from "@/lib/world-nav";
-import { BADGE, measurementTooltip, trustRows, type Honesty } from "@/lib/world-trust";
+import { BADGE, coveringPhoto, measurementTooltip, trustRows, type Honesty } from "@/lib/world-trust";
 import type { Hotspot, MinimapInfo, WorldEngine } from "./world-engine";
 
 export type WorldViewerProps = {
@@ -74,6 +74,9 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
   const [fullscreen, setFullscreen] = useState(false);
   const [touch, setTouch] = useState(false);
   const [help, setHelp] = useState(true);
+  // index of the captured photo covering the current view; null = no photo looked this way; undefined = unknown yet
+  const [cover, setCover] = useState<number | null | undefined>(undefined);
+  const coverRef = useRef<number | null | undefined>(undefined);
 
   const a = useMemo(() => {
     const by = (k: string) => artifacts.filter((x) => x.kind === k);
@@ -131,6 +134,14 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
           onTour: setTouring,
           onFade: setFade,
           onPose: (p) => {
+            const hs = readyRef.current?.hotspots;
+            if (hs?.length) {
+              const c = coveringPhoto(p, hs.map((h) => h.pose), 35, w.viewpoints?.length ? 1.5 : Infinity); // azimuth-only photos: heading decides
+              if (c !== coverRef.current) {
+                coverRef.current = c;
+                setCover(c);
+              }
+            }
             const el = markerRef.current;
             const mm = engineRef.current ? readyRef.current?.minimap : null;
             if (!el || !mm) return;
@@ -241,9 +252,31 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
         </div>
       )}
 
+      {/* view coverage: is a captured photo behind what is on screen, or is this part of the world inferred? */}
+      {ready && ready.mode === "walk" && hotspots.length > 0 && cover !== undefined && fade === 0 && !error && (
+        <div className="pointer-events-none absolute left-1/2 top-24 z-[5] -translate-x-1/2 sm:top-4" data-testid="coverage-label" data-covered={cover !== null ? "yes" : "no"}>
+          {cover !== null ? (
+            <span className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-teal-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300" aria-hidden />
+              Captured view · photo {hotspots[cover]?.label}
+            </span>
+          ) : honesty === "ai_generated" ? (
+            <span className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-amber-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden />
+              Inferred area · no photo looked this way
+            </span>
+          ) : (
+            <span className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-sky-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
+              Between photos · estimated surfaces
+            </span>
+          )}
+        </div>
+      )}
+
       {/* captured photo overlay at its viewpoint */}
       <AnimatePresence>
-        {showPhoto && arrivedPhoto && (
+        {showPhoto && arrivedPhoto && (cover === undefined || cover === arrived) && (
           <motion.div key={arrived} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="pointer-events-none absolute bottom-28 right-3 w-[min(34vw,320px)] sm:right-4" data-testid="photo-overlay">
             <div className="glass overflow-hidden rounded-2xl p-1.5">
               <img src={arrivedPhoto.image} alt={`Captured photo ${arrivedPhoto.label}`} className="max-h-[42vh] w-full rounded-xl object-contain" />

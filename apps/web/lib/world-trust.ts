@@ -71,3 +71,27 @@ export function measurementTooltip(honesty: Honesty): string {
     ? "Measurement disabled: AI-generated geometry is not reliable for dimensions."
     : "Measurement disabled: depth is estimated per photo, so dimensions are not reliable.";
 }
+
+/**
+ * Which captured photo (if any) covers the current view. A photo covers the view when the camera is near where it was
+ * taken (within `maxDist` on the floor plane) and looks within `halfAngleDeg` of the photo's heading. Anything else is
+ * a part of the world no photo showed: for generated worlds that is inferred content and the viewer labels it so.
+ */
+export function coveringPhoto(
+  view: { x: number; z: number; yaw: number },
+  shots: { p: [number, number, number]; yaw: number }[],
+  halfAngleDeg = 35,
+  maxDist = 1.5,
+): number | null {
+  let best: number | null = null;
+  let bestA = Infinity;
+  shots.forEach((s, i) => {
+    if (Math.hypot(s.p[0] - view.x, s.p[2] - view.z) > maxDist) return;
+    const d = Math.abs(Math.atan2(Math.sin(view.yaw - s.yaw), Math.cos(view.yaw - s.yaw)));
+    if (d <= (halfAngleDeg * Math.PI) / 180 && d < bestA) {
+      bestA = d;
+      best = i;
+    }
+  });
+  return best;
+}
