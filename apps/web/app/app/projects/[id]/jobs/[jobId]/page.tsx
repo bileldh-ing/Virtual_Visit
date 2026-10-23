@@ -33,7 +33,9 @@ export default function JobPage() {
         <Card className="mt-6 flex flex-wrap items-center justify-between gap-4 border-teal-400/25 p-6">
           <div>
             <p className="font-display text-xl text-ivory-50">Your reconstruction is ready</p>
-            <p className="text-sm text-ink-300">Explore the real camera viewpoints and sparse points in 3D.</p>
+            <p className="text-sm text-ink-300">
+              {done?.engine_used === "marble_world" ? "Walk through the generated world: WASD, mouse-look, minimap and your original photos." : done?.engine_used === "depth_room" ? "Walk through the depth-estimated room built from your photos." : "Explore the real camera viewpoints and sparse points in 3D."}
+            </p>
           </div>
           <Link href={`/app/projects/${id}/viewer`}><Button size="lg"><Eye className="h-4 w-4" />Open viewer</Button></Link>
         </Card>

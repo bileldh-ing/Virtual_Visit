@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, formatDuration } from "@/lib/api";
 import { useLiveJob, useNow } from "@/lib/hooks";
-import { PANORAMA_STAGES, PHOTOGRAMMETRY_STAGES, stageStatuses, type Job, type StageStatus } from "@/lib/schemas";
+import { jobEngine } from "@/lib/engines";
+import { DEPTH_STAGES, MARBLE_STAGES, PANORAMA_STAGES, PHOTOGRAMMETRY_STAGES, stageStatuses, type Job, type StageStatus } from "@/lib/schemas";
+import { EngineSummary } from "./EngineSummary";
 import { Badge, Button, Card, ErrorNote, stateTone } from "@/components/ui";
 
 const ICON: Record<StageStatus, React.ReactNode> = {
@@ -42,7 +44,8 @@ export function JobProgress({ jobId, onDone }: { jobId: string; onDone?: (job: J
   if (error) return <ErrorNote error={error} />;
   if (!job) return <div className="indeterminate h-1 rounded-full bg-white/8" />;
 
-  const stages = job.mode === "PANORAMA_TOUR" ? PANORAMA_STAGES : PHOTOGRAMMETRY_STAGES;
+  const eng = jobEngine(job).used;
+  const stages = job.mode === "PANORAMA_TOUR" ? PANORAMA_STAGES : eng === "marble_world" ? MARBLE_STAGES : eng === "depth_room" ? DEPTH_STAGES : PHOTOGRAMMETRY_STAGES;
   const st = stageStatuses(job, stages);
   const elapsed = job.started_at ? ((job.finished_at ? new Date(job.finished_at).getTime() : now) - new Date(job.started_at).getTime()) / 1000 : 0;
   const stageElapsed = job.stage_started_at && !job.is_terminal ? (now - new Date(job.stage_started_at).getTime()) / 1000 : null;
@@ -86,6 +89,7 @@ export function JobProgress({ jobId, onDone }: { jobId: string; onDone?: (job: J
           )}
         </div>
       </div>
+      {job.engine && <EngineSummary job={job} className="mt-4 border-t border-white/8 pt-4" />}
       <ErrorNote error={actionError} className="mt-4" />
       {job.error && (
         <div role="alert" className="mt-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-400">
@@ -98,7 +102,7 @@ export function JobProgress({ jobId, onDone }: { jobId: string; onDone?: (job: J
       <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/8" role="progressbar" aria-label="Completed stages" aria-valuemin={0} aria-valuemax={stages.length} aria-valuenow={doneCount}>
         <motion.div className="h-full rounded-full bg-teal-400" animate={{ width: `${(doneCount / stages.length) * 100}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
       </div>
-      <p className="mt-1.5 text-xs text-ink-400">{doneCount} of {stages.length} stages finished. No percentage is shown inside a stage because COLMAP does not report one.</p>
+      <p className="mt-1.5 text-xs text-ink-400">{doneCount} of {stages.length} stages finished. No percentage is shown inside a stage because the engines do not report one.</p>
 
       <ol className="mt-5 space-y-1">
         {stages.map(([key, label, desc]) => {

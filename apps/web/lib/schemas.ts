@@ -95,6 +95,7 @@ export type Job = {
   attempt_count: number;
   max_attempts: number;
   error: { category: string; message: string } | null;
+  config?: Record<string, unknown>;
   result: {
     status?: string;
     output_type?: string;
@@ -144,6 +145,8 @@ export type EngineOptions = {
   marble: { configured: boolean; ok: boolean; balance: number | null; error_category: string | null };
   marble_allowance: { used: number; limit: number };
   chain: EngineChain;
+  marble_models?: string[];
+  marble_model?: string;
 };
 
 export const WorldSchema = z
@@ -216,6 +219,23 @@ export const PHOTOGRAMMETRY_STAGES = [
   ["MESH_OR_SPLAT_GENERATION", "Mesh", "Poisson meshing of the dense cloud"],
   ["ARTIFACT_OPTIMIZATION", "Web optimisation", "Outlier filtering, point budget, viewer metadata"],
   ["PREVIEW_GENERATION", "Preview", "Top-down render of the real points"],
+  ["ARTIFACT_VALIDATION", "Validation", "Every file parsed, counted and checksummed"],
+] as const;
+
+export const MARBLE_STAGES = [
+  ["QUEUED", "Queued", "Waiting for a worker"],
+  ["INPUT_VALIDATION", "Prepare photos", "Checks, resized copies for World Labs, camera directions from COLMAP"],
+  ["MESH_OR_SPLAT_GENERATION", "Marble generates the world", "Uploads, then World Labs builds a panorama and a 3D world (paid)"],
+  ["ARTIFACT_VALIDATION", "Download & validate", "Splats (SPZ), collider mesh, panorama: parsed, counted, checksummed"],
+] as const;
+
+export const DEPTH_STAGES = [
+  ["QUEUED", "Queued", "Waiting for a worker"],
+  ["INPUT_VALIDATION", "Input validation", "Checksums, decoding and orientation of every photo"],
+  ["CAMERA_POSE_ESTIMATION", "Camera positions", "COLMAP on the photos (falls back to a single view if it cannot solve)"],
+  ["DENSE_RECONSTRUCTION", "Depth per photo", "Depth Anything V2 Small on CPU, aligned to COLMAP points, floor flattened"],
+  ["MESH_OR_SPLAT_GENERATION", "Room mesh & collider", "Textured surfaces from each photo, walkable floor grid with walls"],
+  ["PREVIEW_GENERATION", "Preview", "Top-down map of the walkable floor"],
   ["ARTIFACT_VALIDATION", "Validation", "Every file parsed, counted and checksummed"],
 ] as const;
 

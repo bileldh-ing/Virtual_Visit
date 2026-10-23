@@ -8,6 +8,8 @@ import { classifyLayers, num, outputHeadline } from "@/lib/quality";
 import type { Artifact, Job, Project, Tour } from "@/lib/schemas";
 import { Badge, Button, Card } from "@/components/ui";
 import { TourViewer } from "@/components/viewer/TourViewer";
+import { isWorldArtifactSet } from "@/components/viewer/WorldViewer";
+import { EngineSummary } from "./EngineSummary";
 import { PanoramaViewer } from "@/components/viewer/PanoramaViewer";
 
 const KIND_LABEL: Record<string, string> = {
@@ -23,7 +25,25 @@ const KIND_LABEL: Record<string, string> = {
   PANORAMA_THUMB: "Panorama thumbnail",
   TOUR: "Tour graph (JSON)",
   MESH: "Mesh (GLB)",
+  WORLD: "World description (JSON)",
+  SPLAT_SPZ: "Gaussian splats (SPZ)",
+  COLLIDER_MESH: "Collision mesh (GLB)",
+  ROOM_MESH: "Depth-estimated room (GLB)",
+  THUMBNAIL: "Thumbnail",
+  PROVIDER_LOG: "Provider call log (JSON)",
 };
+
+/** Lightweight poster for explorable worlds: the 3D viewer only loads on the viewer page. */
+function WorldPoster({ projectId, artifacts }: { projectId: string; artifacts: Artifact[] }) {
+  const img = artifacts.find((a) => a.kind === "PANORAMA") ?? artifacts.find((a) => a.kind === "THUMBNAIL") ?? artifacts.find((a) => a.kind === "PREVIEW");
+  return (
+    <Link href={`/app/projects/${projectId}/viewer`} className="group relative block h-[62vh] min-h-[420px] overflow-hidden rounded-3xl bg-ink-950 ring-1 ring-white/8" aria-label="Open the walkable world">
+      {img && <img src={img.url} alt="Preview of the generated space" className={clsx("h-full w-full transition duration-700 group-hover:scale-[1.02]", img.kind === "PREVIEW" ? "object-contain p-10" : "object-cover")} />}
+      <span className="absolute inset-0 bg-gradient-to-t from-ink-950/80 via-transparent to-transparent" />
+      <span className="absolute bottom-6 left-1/2 inline-flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-teal-400 px-5 py-3 text-sm font-medium text-ink-950 shadow-lg">Walk through it</span>
+    </Link>
+  );
+}
 
 export function Metric({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
   return (
@@ -55,7 +75,9 @@ export function OverviewTab({ project, job, artifacts, tour }: { project: Projec
   return (
     <div className="space-y-6">
       <div className="relative">
-        {isPano && panoNodes.length ? (
+        {isWorldArtifactSet(artifacts) ? (
+          <WorldPoster projectId={project.id} artifacts={artifacts} />
+        ) : isPano && panoNodes.length ? (
           <PanoramaViewer nodes={panoNodes} title={project.title} className="h-[62vh] min-h-[420px]" />
         ) : (
           <TourViewer title={project.title} artifacts={artifacts} tour={tour} result={job.result} compact className="h-[62vh] min-h-[420px]" />
@@ -71,6 +93,7 @@ export function OverviewTab({ project, job, artifacts, tour }: { project: Projec
             <h2 className="font-display text-2xl text-ivory-50">{outputHeadline(job.result)}</h2>
             <Badge tone={job.state === "SUCCEEDED" ? "teal" : "amber"}>{job.state.replace(/_/g, " ").toLowerCase()}</Badge>
           </div>
+          {job.engine && <EngineSummary job={job} className="mt-3" />}
           <dl className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
             {num(m.images_registered) != null && <Metric label="Registered" value={`${m.images_registered}/${m.images_uploaded}`} hint="photos placed in 3D" />}
             {num(m.sparse_points) != null && <Metric label="3D points" value={Number(m.sparse_points).toLocaleString("en-US")} hint="sparse, triangulated" />}
