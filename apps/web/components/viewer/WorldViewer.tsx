@@ -35,6 +35,8 @@ export type WorldViewerProps = {
 declare global {
   interface Window {
     __roomscapeWorld?: () => ReturnType<WorldEngine["state"]> | null;
+    /** test/capture hook: fixed-timestep control of the running engine (see WorldEngine.advance) */
+    __roomscapeWorldEngine?: () => WorldEngine | null;
   }
 }
 
@@ -140,6 +142,7 @@ export function WorldViewer({ title, artifacts, tour, fallback, className, compa
         }, detail);
         engineRef.current = engine;
         window.__roomscapeWorld = () => engineRef.current?.state() ?? null;
+        window.__roomscapeWorldEngine = () => engineRef.current;
         await engine.load();
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Could not load the world.");

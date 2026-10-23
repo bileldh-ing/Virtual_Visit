@@ -102,6 +102,7 @@ export class WorldEngine {
   private waypointIndex = 0;
   private lastPoseEmit = 0;
   private stuck = 0;
+  private manual = false;
   hotspots: Hotspot[] = [];
   loaded = false;
   splatPoints = 0;
@@ -626,12 +627,28 @@ export class WorldEngine {
     const loop = () => {
       if (this.disposed) return;
       this.raf = requestAnimationFrame(loop);
-      this.tick(Math.min(0.05, this.clock.getDelta()));
+      const dt = Math.min(0.05, this.clock.getDelta());
+      if (!this.manual) this.tick(dt);
     };
     loop();
   }
 
-  private tick(dt: number): void {
+  /**
+   * Fixed-timestep control for tests and offline capture on machines without a GPU: while manual, the render loop
+   * stops advancing time and `advance()` simulates `seconds` in `1/hz` steps (input, collision, transitions), then
+   * renders one frame. Movement is identical to the realtime loop; only wall-clock pacing differs.
+   */
+  setManual(on: boolean): void {
+    this.manual = on;
+    this.clock.getDelta();
+  }
+
+  advance(seconds: number, hz = 60): void {
+    const n = Math.max(1, Math.round(seconds * hz));
+    for (let i = 0; i < n; i++) this.tick(seconds / n, i === n - 1);
+  }
+
+  private tick(dt: number, render = true): void {
     // 1. scripted transition (hotspot glide / door fade / tour)
     if (this.transition) {
       const tr = this.transition;
@@ -690,9 +707,10 @@ export class WorldEngine {
     this.camera.position.copy(this.player.eye);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
     for (const m of this.hotspotMeshes) (m as THREE.Mesh).visible = !this.transition;
+    if (!render) return;
     this.renderer.render(this.scene, this.camera);
     const now = performance.now();
-    if (now - this.lastPoseEmit > 66) {
+    if (this.manual || now - this.lastPoseEmit > 66) {
       this.lastPoseEmit = now;
       this.ev.onPose?.({ x: this.player.eye.x, z: this.player.eye.z, yaw: this.yaw });
     }

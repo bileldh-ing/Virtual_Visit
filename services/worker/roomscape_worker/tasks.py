@@ -236,7 +236,7 @@ def _run(jid, attempt_id, attempt_no, org_id, project_id, mode, upload_ids, cfg,
             db.commit()
         if len(manifest) < len(upload_ids):
             log.warning("some inputs were deleted before processing", extra={"job_id": str(jid)})
-        registry = build_registry(probe_local=True)
+        registry = build_registry(probe_local=True, marble_model=cfg.get("marble_model"))
         plan = plan_chain(registry, inputs, requested, allow_fallback)
         on_stage = _on_stage_factory(jid, attempt_id)
 

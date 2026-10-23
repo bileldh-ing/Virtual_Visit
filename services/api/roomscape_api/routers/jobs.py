@@ -18,7 +18,15 @@ from .. import audit, taskqueue
 from ..config import get_settings
 from ..db import get_db, get_sessionmaker
 from ..deps import current_user, load_project, membership
-from ..engines import ENGINE_NAMES, ENGINE_TO_MODE, LEGACY_MODE_TO_ENGINE, build_registry, inputs_from_uploads, marble_status
+from ..engines import (
+    ENGINE_NAMES,
+    ENGINE_TO_MODE,
+    LEGACY_MODE_TO_ENGINE,
+    allowed_models,
+    build_registry,
+    inputs_from_uploads,
+    marble_status,
+)
 from ..errors import APIError, not_found
 from ..jobs_service import transition
 from ..models import (
@@ -103,6 +111,7 @@ class JobCreate(BaseModel):
     mode: str = Field(default="AUTO", pattern="^(AUTO|PHOTOGRAMMETRY|PANORAMA_TOUR|GAUSSIAN_SPLAT)$")
     engine: str | None = Field(default=None, pattern="^(" + "|".join(ENGINE_NAMES) + ")$")
     allow_fallback: bool = True
+    marble_model: str | None = Field(default=None, max_length=40)
     idempotency_key: str = Field(min_length=8, max_length=100)
     confirm_warnings: bool = False
 
@@ -111,11 +120,20 @@ def _month_start():
     return now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
-def engine_options(db: Session, p: Project, ups: list, requested: str = "auto", allow_fallback: bool = True) -> dict:
+def _model(requested: str | None) -> str | None:
+    if requested is None:
+        return None
+    if requested not in allowed_models():
+        raise APIError(422, "UNKNOWN_MODEL", "That Marble model is not available on this deployment.")
+    return requested
+
+
+def engine_options(db: Session, p: Project, ups: list, requested: str = "auto", allow_fallback: bool = True,
+                   marble_model: str | None = None) -> dict:
     """Describe every engine for these uploads, the live Marble status and the chain that would run."""
     from roomscape_recon.engines import plan_chain
 
-    reg = build_registry(probe_local=False)
+    reg = build_registry(probe_local=False, marble_model=marble_model)
     inputs = inputs_from_uploads(ups)
     described = reg.describe(inputs)
     status = marble_status()
@@ -156,17 +174,18 @@ def engine_options(db: Session, p: Project, ups: list, requested: str = "auto", 
         first = next((sk for sk in skipped if sk["engine"] == plan_.intended), None)
         chain["notice"] = (first or {}).get("reason")
     return {"engines": described, "marble": {k: v for k, v in status.items() if k != "checked_at"},
-            "marble_allowance": allowance, "chain": chain}
+            "marble_allowance": allowance, "chain": chain,
+            "marble_models": allowed_models(), "marble_model": marble_model or get_settings().marble_model}
 
 
 @router.get("/projects/{project_id}/engines")
-def list_engines(project_id: uuid.UUID, engine: str = "auto", user: User = Depends(current_user),
-                 db: Session = Depends(get_db)):
+def list_engines(project_id: uuid.UUID, engine: str = "auto", marble_model: str | None = None,
+                 user: User = Depends(current_user), db: Session = Depends(get_db)):
     p, _ = load_project(db, project_id, user)
     if engine not in ENGINE_NAMES:
         raise APIError(422, "UNKNOWN_ENGINE", "Unknown engine.")
     ups = db.scalars(select(Upload).where(Upload.project_id == p.id, Upload.status == "stored", Upload.kind == "PHOTO")).all()
-    return engine_options(db, p, list(ups), engine)
+    return engine_options(db, p, list(ups), engine, marble_model=_model(marble_model))
 
 
 @router.post("/projects/{project_id}/reconstruction-jobs", status_code=202)
@@ -195,7 +214,8 @@ def create_job(project_id: uuid.UUID, body: JobCreate, user: User = Depends(curr
         mode = "PHOTOGRAMMETRY"
     elif requested == "panorama_tour":
         mode = "PANORAMA_TOUR"
-    opts = engine_options(db, p, list(ups), requested, allow_fallback)
+    marble_model = _model(body.marble_model)
+    opts = engine_options(db, p, list(ups), requested, allow_fallback, marble_model)
     chain = opts["chain"]
     if not chain["engines"]:
         reason = "; ".join(sk["reason"] or sk["engine"] for sk in chain["skipped"]) or "no engine"
@@ -247,7 +267,8 @@ def create_job(project_id: uuid.UUID, body: JobCreate, user: User = Depends(curr
                             engine=requested, cost_estimate=estimate,
                             config={"max_image_size": s.colmap_max_image_size, "threads": s.colmap_threads,
                                     "matcher": "exhaustive" if len(inputs) <= 150 else "sequential",
-                                    "allow_fallback": allow_fallback})
+                                    "allow_fallback": allow_fallback,
+                                    **({"marble_model": marble_model} if marble_model else {})})
     db.add(job)
     try:
         db.flush()

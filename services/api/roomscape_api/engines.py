@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import threading
 import time
 from pathlib import Path
 
+import httpx
 from roomscape_recon.colmap_engine import ColmapConfig
 from roomscape_recon.engines import EngineInput, EngineRegistry, default_registry
 from roomscape_recon.engines.marble import MarbleClient, MarbleConfig
@@ -20,21 +23,50 @@ ENGINE_TO_MODE = {"marble_world": "WORLD", "depth_room": "WORLD", "colmap_sparse
                   "panorama_tour": "PANORAMA_TOUR", "gaussian_splat_local": "GAUSSIAN_SPLAT"}
 
 
-def marble_config(s: Settings | None = None) -> MarbleConfig:
+log = logging.getLogger("roomscape.engines")
+
+SIMULATED = {
+    "auth": (401, {"detail": "Simulated: invalid API key (ROOMSCAPE_MARBLE_SIMULATE_FAILURE=auth)"}),
+    "credits": (402, {"detail": "Simulated: insufficient credits (ROOMSCAPE_MARBLE_SIMULATE_FAILURE=credits)"}),
+}
+
+
+def simulated_transport(s: Settings | None = None) -> httpx.BaseTransport | None:
+    """A transport that answers every World Labs call with the configured failure (dev/test only)."""
+    s = s or get_settings()
+    mode = (s.marble_simulate_failure or "").strip().lower()
+    if not mode:
+        return None
+    if not s.is_dev or mode not in SIMULATED:
+        log.warning("ignoring ROOMSCAPE_MARBLE_SIMULATE_FAILURE=%s (env %s)", mode, s.env)
+        return None
+    code, body = SIMULATED[mode]
+    return httpx.MockTransport(lambda req: httpx.Response(code, content=json.dumps(body).encode(),
+                                                          headers={"content-type": "application/json"}))
+
+
+def allowed_models(s: Settings | None = None) -> list[str]:
+    s = s or get_settings()
+    return [m.strip() for m in s.marble_models_allowed.split(",") if m.strip()]
+
+
+def marble_config(s: Settings | None = None, model: str | None = None) -> MarbleConfig:
     s = s or get_settings()
     mode = s.marble_auth_mode
     key = s.wlt_api_key if mode == "header" else None
     if mode == "off":
         key = None
     return MarbleConfig(base_url=s.marble_base_url, api_key=key, auth_mode="off" if mode == "off" else mode,
-                        model=s.marble_model, operation_timeout_s=float(s.marble_operation_timeout_s),
+                        model=model or s.marble_model, operation_timeout_s=float(s.marble_operation_timeout_s),
                         spz_variants=tuple(v.strip() for v in s.marble_spz_variants.split(",") if v.strip()))
 
 
-def build_registry(*, probe_local: bool, s: Settings | None = None, marble_transport=None) -> EngineRegistry:
+def build_registry(*, probe_local: bool, s: Settings | None = None, marble_transport=None,
+                   marble_model: str | None = None) -> EngineRegistry:
     s = s or get_settings()
+    marble_transport = marble_transport or simulated_transport(s)
     return default_registry(
-        marble_cfg=marble_config(s), depth_model_path=s.depth_model_path, depth_allow_download=s.depth_model_download,
+        marble_cfg=marble_config(s, marble_model), depth_model_path=s.depth_model_path, depth_allow_download=s.depth_model_download,
         depth_enabled=s.depth_engine_enabled,
         colmap_cfg=ColmapConfig(max_image_size=s.colmap_max_image_size, num_threads=s.colmap_threads,
                                 step_timeout_s=s.job_step_timeout_s),
@@ -54,14 +86,15 @@ def marble_status(ttl_s: float = 60.0, transport=None) -> dict:
     if not cfg.configured:
         return {"configured": False, "ok": False, "balance": None, "error_category": "NOT_CONFIGURED",
                 "checked_at": None}
-    if not s.marble_live_balance:
+    sim = simulated_transport(s)
+    if not s.marble_live_balance and sim is None:
         return {"configured": True, "ok": True, "balance": None, "error_category": None, "checked_at": None}
     with _status_lock:
         if _status_cache["value"] is not None and time.time() - _status_cache["at"] < ttl_s:
             return _status_cache["value"]
     cfg.max_retries = 1
     cfg.request_timeout_s = 8.0
-    client = MarbleClient(cfg, transport=transport, sleep=lambda _s: None)
+    client = MarbleClient(cfg, transport=transport or sim, sleep=lambda _s: None)
     try:
         bal = client.credits()
         value = {"configured": True, "ok": True, "balance": bal, "error_category": None, "checked_at": time.time()}

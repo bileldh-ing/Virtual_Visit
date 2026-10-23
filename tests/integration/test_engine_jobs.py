@@ -38,8 +38,8 @@ def marble_env(monkeypatch, tmp_path):
     fake = FakeMarble(tmp_path)
     real = api_engines.build_registry
 
-    def build(probe_local, s=None, marble_transport=None):
-        reg = real(probe_local=probe_local, s=s, marble_transport=fake.transport())
+    def build(probe_local, s=None, marble_transport=None, marble_model=None):
+        reg = real(probe_local=probe_local, s=s, marble_transport=fake.transport(), marble_model=marble_model)
         m = reg.get("marble_world")
         m.sleep = lambda _s: None
         m.cfg.poll_initial_s = m.cfg.poll_max_s = 0
@@ -159,3 +159,51 @@ def test_explicit_engine_without_fallback_fails_cleanly(marble_env, signup):
     job = c.get(f"/api/v1/reconstruction-jobs/{j['id']}").json()
     assert job["state"] == "FAILED" and job["error"]["category"] == "PROVIDER_AUTH"
     assert "test-key-not-real" not in str(job)
+
+
+def test_engine_picker_model_changes_estimate_and_is_recorded(marble_env, signup):
+    c, _, p = _project(signup)
+    r = c.get(f"/api/v1/projects/{p['id']}/engines", params={"marble_model": "marble-1.1"}).json()
+    marble = next(e for e in r["engines"] if e["name"] == "marble_world")
+    assert marble["estimate"]["credits"] == 1600  # 1,500 world + 100 multi-image pano (documented price)
+    assert r["marble_model"] == "marble-1.1" and "marble-1.0-draft" in r["marble_models"]
+    bad = c.get(f"/api/v1/projects/{p['id']}/engines", params={"marble_model": "marble-9"})
+    assert bad.status_code == 422 and bad.json()["error"]["code"] == "UNKNOWN_MODEL"
+    j = c.post(f"/api/v1/projects/{p['id']}/reconstruction-jobs",
+               json={"engine": "marble_world", "marble_model": "marble-1.1", "idempotency_key": uuid.uuid4().hex,
+                     "confirm_warnings": True}).json()
+    assert j["config"]["marble_model"] == "marble-1.1"
+    assert j["cost_estimate"]["engines"]["marble_world"]["credits"] == 1600
+
+
+def test_simulated_key_failure_flag_skips_marble_with_reason(monkeypatch, signup):
+    """ROOMSCAPE_MARBLE_SIMULATE_FAILURE=auth exercises the real client error path without touching any key."""
+    from roomscape_api import engines as api_engines
+    from roomscape_api.config import get_settings
+
+    monkeypatch.setenv("WLT_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("ROOMSCAPE_MARBLE_SIMULATE_FAILURE", "auth")
+    get_settings.cache_clear()
+    api_engines.reset_status_cache()
+    try:
+        c, _, p = _project(signup)
+        r = c.get(f"/api/v1/projects/{p['id']}/engines").json()
+        marble = next(e for e in r["engines"] if e["name"] == "marble_world")
+        assert r["marble"]["ok"] is False and r["marble"]["error_category"] == "PROVIDER_AUTH"
+        assert marble["runnable"] is False and "API key invalid" in marble["not_runnable_reason"]
+        assert r["chain"]["primary"] != "marble_world"
+        assert any(sk["engine"] == "marble_world" for sk in r["chain"]["skipped"])
+    finally:
+        monkeypatch.delenv("ROOMSCAPE_MARBLE_SIMULATE_FAILURE", raising=False)
+        monkeypatch.delenv("WLT_API_KEY", raising=False)
+        get_settings.cache_clear()
+        api_engines.reset_status_cache()
+
+
+def test_simulated_failure_is_ignored_in_production(monkeypatch):
+    from roomscape_api.config import Settings
+    from roomscape_api.engines import simulated_transport
+
+    assert simulated_transport(Settings(env="production", marble_simulate_failure="auth",
+                                        secret_key="x" * 32)) is None
+    assert simulated_transport(Settings(env="test", marble_simulate_failure="auth", secret_key="x" * 32)) is not None

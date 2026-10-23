@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     marble_operation_timeout_s: int = 1800
     marble_spz_variants: str = "100k,500k"
     marble_live_balance: bool = True  # GET /marble/v1/credits when listing engines (cached)
+    # Models a user may pick per job in the engine picker (first = default when the job does not say).
+    marble_models_allowed: str = "marble-1.0-draft,marble-1.1"
+    # Dev/test only: make every World Labs call fail as if the key were revoked ("auth") or the account empty
+    # ("credits"), without touching the real key. Ignored outside development/test.
+    marble_simulate_failure: str = ""
     # Free local fallback (Depth Anything V2 Small, Apache-2.0)
     depth_engine_enabled: bool = True
     depth_model_path: str = "./.data/models/depth-anything-v2-small/model.onnx"
