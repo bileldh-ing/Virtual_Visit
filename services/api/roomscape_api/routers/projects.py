@@ -223,7 +223,7 @@ async def upload_files(project_id: uuid.UUID, request: Request, files: list[Uplo
         name = media.display_name(f.filename)
         try:
             data = await _read_limited(f, s.max_upload_bytes)
-            mime = media.validate_image(data)
+            mime = media.validate_image(data, s.max_image_pixels, s.min_image_side)
             sha = hashlib.sha256(data).hexdigest()
             existing = db.scalar(select(Upload).where(Upload.project_id == p.id, Upload.sha256 == sha, Upload.status == "stored"))
             if existing:

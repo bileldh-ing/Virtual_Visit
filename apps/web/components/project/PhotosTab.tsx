@@ -130,7 +130,7 @@ export function PhotosTab({ project }: { project: Project }) {
             <UploadCloud className="mx-auto h-10 w-10 text-teal-300" aria-hidden />
             <p className="mt-3 font-display text-xl text-ivory-50">Drop photos here</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-ink-300">
-              20–200 overlapping shots per property. Walk slowly, keep ~60% overlap, cover doorways between rooms. JPEG, PNG or WebP, up to 40 MB each. 2:1 equirectangular images become a 360° tour.
+              20–200 overlapping shots per property. Walk slowly, keep ~60% overlap, cover doorways between rooms. JPEG, PNG or WebP, up to 20 MB each (checked on the server). 2:1 equirectangular images become a 360° tour.
             </p>
             <input ref={input} type="file" accept={ACCEPT} multiple className="sr-only" id="file-input" onChange={(e) => { void upload(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
             <Button className="mt-5" onClick={() => input.current?.click()} disabled={Boolean(progress)}><ImagePlus className="h-4 w-4" />Choose photos</Button>

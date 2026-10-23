@@ -20,10 +20,24 @@ def display_name(name: str | None) -> str:
     return base[:120]
 
 
-def validate_image(data: bytes) -> str:
+def validate_image(data: bytes, max_pixels: int = 100_000_000, min_side: int = 256) -> str:
+    """Server-side input check: real format from magic bytes (not the extension or Content-Type), then the
+    header-declared size before anything is decoded."""
     mime = sniff_mime(data[:16])
     if mime is None:
         raise APIError(415, "UNSUPPORTED_MEDIA_TYPE", "Only JPEG, PNG or WebP images are accepted.")
+    try:
+        with Image.open(io.BytesIO(data)) as im:  # lazy: reads the header only
+            w, h = im.size
+            fmt = (im.format or "").upper()
+    except Exception:
+        raise APIError(422, "IMAGE_DECODE_FAILED", "The image could not be decoded; it may be corrupt.")
+    if fmt not in {"JPEG", "PNG", "WEBP"} or {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}[fmt] != mime:
+        raise APIError(415, "UNSUPPORTED_MEDIA_TYPE", "Only JPEG, PNG or WebP images are accepted.")
+    if w * h > max_pixels:
+        raise APIError(413, "IMAGE_TOO_LARGE", f"The image is {w}×{h}; at most {max_pixels // 1_000_000} megapixels are accepted.")
+    if min(w, h) < min_side:
+        raise APIError(422, "IMAGE_TOO_SMALL", f"The image is {w}×{h}; the shorter side must be at least {min_side} px.")
     return mime
 
 

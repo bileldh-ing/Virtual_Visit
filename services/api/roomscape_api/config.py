@@ -63,7 +63,9 @@ class Settings(BaseSettings):
     depth_model_path: str = "./.data/models/depth-anything-v2-small/model.onnx"
     depth_model_download: bool = True
 
-    max_upload_bytes: int = 40 * 1024 * 1024
+    max_upload_bytes: int = 20 * 1024 * 1024  # per file; World Labs and the web viewer never need more
+    max_image_pixels: int = 100_000_000  # decompression-bomb guard (header check before any decode)
+    min_image_side: int = 256
     max_files_per_request: int = 60
 
     smtp_url: str | None = None  # smtp://user:pass@host:587 ; unset -> dev outbox only
