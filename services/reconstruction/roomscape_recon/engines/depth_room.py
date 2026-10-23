@@ -47,7 +47,8 @@ from .gltf import MeshPart, write_glb
 from .marble import select_inputs
 
 MODEL_REPO = "onnx-community/depth-anything-v2-small"
-MODEL_URL = f"https://huggingface.co/{MODEL_REPO}/resolve/main/onnx/model.onnx"
+MODEL_REVISION = "4472b7362082ad9968fee890ca0f1e5aca36b93d"  # pinned commit (verified sha256 below, 2026-10-23)
+MODEL_URL = f"https://huggingface.co/{MODEL_REPO}/resolve/{MODEL_REVISION}/onnx/model.onnx"
 MODEL_SHA256 = "afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c"
 MODEL_LICENSE = "Apache-2.0 (Depth-Anything-V2-Small)"
 EYE_HEIGHT = 1.5
