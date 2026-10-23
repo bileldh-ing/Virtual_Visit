@@ -134,3 +134,28 @@ def test_depth_engine_capabilities_without_runtime(monkeypatch, tmp_path):
     assert caps2.available is False
     est = DepthRoomEngine().estimate([EngineInput(path=Path("a.jpg"), name="a")] * 8)
     assert est.usd == 0.0 and est.credits is None
+
+
+def test_floor_flatten_fit_recovers_a_bowed_floor():
+    """A floor whose inverse depth is mis-scaled with distance (a bowl) is corrected to within 2 %."""
+    import numpy as np
+    from roomscape_recon.engines.depth_room import floor_flatten_fit
+
+    rng = np.random.default_rng(0)
+    z_true = rng.uniform(0.8, 6.0, 4000)
+    inv_true = 1.0 / z_true
+    inv_est = (inv_true - 0.02) / 1.15 + 0.03 * inv_true ** 2  # smooth depth-dependent bias
+    k = (1.0 / inv_true) / (1.0 / inv_est)  # z_true / z_est as measured against the floor plane
+    res = floor_flatten_fit(inv_est, k)
+    assert res is not None
+    coef, before, after = res
+    pred = coef[0] + coef[1] * inv_est + coef[2] * inv_est ** 2
+    assert before > 0.05 and after < 0.02
+    assert np.max(np.abs(pred / inv_true - 1)) < 0.03
+
+
+def test_floor_flatten_fit_refuses_too_few_samples():
+    import numpy as np
+    from roomscape_recon.engines.depth_room import floor_flatten_fit
+
+    assert floor_flatten_fit(np.full(50, 0.5), np.full(50, 1.2)) is None

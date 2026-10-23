@@ -265,6 +265,7 @@ export class WorldEngine {
         this.params.gravity = 18 * unit;
         this.move.walkSpeed = 1.5 * unit;
         spawn.y = floor + eye;
+        if (!w.spawn) yaw = this.openestYaw(spawn);
       }
     } else {
       this.mode = "waypoint";
@@ -273,6 +274,22 @@ export class WorldEngine {
     this.yaw = yaw;
     this.pitch = 0;
     this.player.onGround = Boolean(this.collider);
+  }
+
+  /** Without a provider spawn pose, start facing the longest free sight line (down the room, not into a wall). */
+  private openestYaw(eye: THREE.Vector3): number {
+    if (!this.collider) return 0;
+    let best = 0;
+    let bestD = -1;
+    for (let k = 0; k < 48; k++) {
+      const a = (k / 48) * Math.PI * 2;
+      const d = this.collider.cast(eye, new THREE.Vector3(-Math.sin(a), 0, -Math.cos(a)), 80) ?? 80;
+      if (d > bestD) {
+        bestD = d;
+        best = a;
+      }
+    }
+    return best;
   }
 
   private buildHotspots(): void {

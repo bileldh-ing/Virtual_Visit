@@ -211,6 +211,35 @@ def fit_inverse_depth(disp: np.ndarray, inv_z: np.ndarray, iters: int = 300, tol
     return float(a), float(b), int(m.sum())
 
 
+def floor_flatten_fit(inv_est: np.ndarray, k: np.ndarray, iters: int = 4) -> tuple[np.ndarray, float, float] | None:
+    """Fit inv_true = c0 + c1*inv + c2*inv^2 on floor samples, where k = z_true / z_est from the floor plane.
+
+    Monocular depth aligned with one affine map per photo tends to bend a flat floor into a bowl (the error grows
+    with distance). Samples that should lie on the floor give the true inverse depth along their ray, so a smooth
+    per-photo correction in inverse depth flattens it. Returns (coefficients, rms before, rms after) or None when
+    there are too few consistent samples (then nothing is changed).
+    """
+    inv_true = inv_est / np.maximum(k, 1e-6)
+    m = np.isfinite(inv_true) & (k > 0.5) & (k < 2.0)
+    if m.sum() < 200:
+        return None
+    before = float(np.sqrt(np.mean((k[m] - 1.0) ** 2)))
+    coef = np.array([0.0, 1.0, 0.0])
+    for _ in range(iters):
+        A = np.stack([np.ones(int(m.sum())), inv_est[m], inv_est[m] ** 2], axis=1)
+        coef, *_ = np.linalg.lstsq(A, inv_true[m], rcond=None)
+        pred = coef[0] + coef[1] * inv_est + coef[2] * inv_est ** 2
+        r = np.abs(pred - inv_true) / np.maximum(inv_true, 1e-9)
+        m = m & (r < max(0.05, float(np.percentile(r[m], 80))))
+        if m.sum() < 200:
+            return None
+    pred = coef[0] + coef[1] * inv_est[m] + coef[2] * inv_est[m] ** 2
+    after = float(np.sqrt(np.mean((inv_true[m] / np.maximum(pred, 1e-9) - 1.0) ** 2)))
+    if not (after < before) or coef[1] <= 0:
+        return None
+    return coef, before, after
+
+
 def grid_mesh(z: np.ndarray, valid: np.ndarray, max_ratio: float) -> np.ndarray:
     """Triangle indices over an (H, W) vertex grid, skipping quads across depth discontinuities."""
     h, w = z.shape
@@ -557,6 +586,33 @@ class DepthRoomEngine(ReconstructionEngine):
             o[..., 1] -= floor_y * scale
             return o
 
+        # 3b. flatten the floor per photo (monocular depth bows it); see floor_flatten_fit
+        floor_fix: dict[str, dict] = {}
+        for gi, ((v, _img, _zmap, _valid, fit), (pa, zz, vv, jj, ii, dw, dh), cam) in enumerate(
+                zip(per_view, grids, cams_a, strict=False)):
+            camf = to_final(cam[None].copy())[0]
+            pf = to_final(pa.copy()).reshape(zz.shape + (3,))
+            d = pf - camf
+            down = d[..., 1] / np.maximum(np.linalg.norm(d, axis=-1), 1e-9)
+            lower = ii > dh * 0.45
+            cand = vv & lower & (down < -0.15) & (pf[..., 1] < 0.35 * EYE_HEIGHT) & (pf[..., 1] > -0.6 * EYE_HEIGHT)
+            k = np.where(cand, camf[1] / np.maximum(camf[1] - pf[..., 1], 1e-6), np.nan)
+            res = floor_flatten_fit((1.0 / np.maximum(zz, 1e-6))[cand], k[cand])
+            if res is None:
+                floor_fix[v.name] = {"applied": False}
+                continue
+            coef, before, after = res
+            inv = 1.0 / np.maximum(zz, 1e-6)
+            inv2 = coef[0] + coef[1] * inv + coef[2] * inv ** 2
+            ok = inv2 > 1e-3
+            zz2 = np.where(ok, 1.0 / np.maximum(inv2, 1e-3), zz)
+            vv2 = vv & ok
+            rays = (pa.reshape(zz.shape + (3,)) - cam) / np.maximum(zz, 1e-9)[..., None]
+            pa2 = (cam + rays * zz2[..., None]).reshape(-1, 3)
+            grids[gi] = (pa2, zz2, vv2, jj, ii, dw, dh)
+            fit["floor_fix"] = {"rms_before": round(before, 4), "rms_after": round(after, 4)}
+            floor_fix[v.name] = {"applied": True, "rms_before": round(before, 4), "rms_after": round(after, 4)}
+
         parts: list[MeshPart] = []
         rays_for_nav: list[tuple[np.ndarray, np.ndarray]] = []
         final_clouds = []
@@ -620,6 +676,7 @@ class DepthRoomEngine(ReconstructionEngine):
                    "room_triangles": room_v["triangles"], "collider_triangles": col_v["triangles"],
                    "walkable_cells": grid.to_dict()["walkable_cells"], "cell_size": grid.cell,
                    "depth_alignment_inliers": {Path(v["name"]).stem: v["depth_fit"].get("inliers") for v in viewpoints},
+                   "floor_flattening": floor_fix,
                    "timings_s": timings, "processing_seconds": elapsed, "scale": "relative (eye-height normalised)",
                    "compute_mode": "CPU"}
         limitations = ["Lower fidelity: depth is predicted per photo by an AI model and stitched; shapes are approximate.",
