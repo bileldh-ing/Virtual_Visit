@@ -13,6 +13,11 @@ much of it was actually captured.
 [![docker](https://github.com/bileldh-ing/Virtual_Visit/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/bileldh-ing/Virtual_Visit/actions/workflows/docker.yml)
 [![deploy](https://github.com/bileldh-ing/Virtual_Visit/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/bileldh-ing/Virtual_Visit/actions/workflows/deploy.yml)
 
+<p align="center">
+  <a href="https://github.com/bileldh-ing/Virtual_Visit/blob/main/docs/media/roomscape-v2-demo.mp4"><img src="docs/media/demo-teaser.gif" width="960" alt="10-second teaser: walking a World Labs Marble world generated from 8 listing photos. Click for the full 3:12 demo video."></a>
+  <br><sub>▶ <b><a href="https://github.com/bileldh-ing/Virtual_Visit/blob/main/docs/media/roomscape-v2-demo.mp4">Watch the 3:12 demo video</a></b> · 10-second teaser above · <a href="#demo-video">chapters</a></sub>
+</p>
+
 ![Walking a Marble 1.1 world generated from 8 photos, with the matching original photo overlaid](docs/media/photo_overlay.webp)
 
 <sub>A `marble-1.1` world generated from 8 Eyeful Tower living-room photos, rendered in headless Chromium with the
@@ -123,51 +128,35 @@ The heading of the photo hotspots in Auto Layout Marble worlds is registered aga
 
 ## Demo video
 
-<!-- TODO(next agent): embed the RoomScape AI 2.0 demo video here (link or GIF + duration). Do not reuse 1.0 footage. -->
-_Coming soon._
+**[▶ RoomScape AI 2.0 demo — 3:12, 1280×720, 10.8 MB](https://github.com/bileldh-ing/Virtual_Visit/blob/main/docs/media/roomscape-v2-demo.mp4)** (opens GitHub's file view; use *View raw* /
+*Download* if it does not play inline). A 1920×1080 master is attached to the
+[v2.0.0 release](https://github.com/bileldh-ing/Virtual_Visit/releases/tag/v2.0.0) when available.
 
-## Limitations (read these)
+<video src="https://raw.githubusercontent.com/bileldh-ing/Virtual_Visit/main/docs/media/roomscape-v2-demo.mp4" controls muted width="100%"></video>
 
-* **No GPU Gaussian splatting here.** The local `gaussian_splat_local` engine needs an NVIDIA GPU worker; this
-  deployment has none, so it is always skipped. Splat worlds come only from Marble.
-* **Not survey-grade.** Marble's metric scale is the provider's estimate; depth rooms are in relative units scaled
-  to eye height. Measuring is disabled for every engine.
-* **Generated content is labelled.** Marble fills in surfaces no photo showed (behind furniture, other rooms,
-  ceilings). The viewer marks views no photo covered as *Inferred area*; the depth room adds nothing beyond the
-  photos but its shapes are approximate.
-* **Software rendering in CI and in the screenshots.** Headless Chromium uses SwiftShader and the 100k-splat preview,
-  so frames are softer and slower than on a GPU.
-* **Marble needs your own World Labs key and credits** (`WLT_API_KEY`). CI never calls the paid API; adapter tests use
-  a mocked transport and recorded fixtures.
-* Dense COLMAP stereo / meshing needs CUDA and is not run.
+If the player above is empty (GitHub only renders uploaded attachments inline), open
+[docs/media/roomscape-v2-demo.mp4](https://raw.githubusercontent.com/bileldh-ing/Virtual_Visit/main/docs/media/roomscape-v2-demo.mp4) directly.
 
-## Quick start (Docker)
+| Time | Chapter |
+|---|---|
+| 0:00 | Hook: a walkable world generated from 8 photos |
+| 0:08 | RoomScape AI 2.0 · the problem: photos are not a tour |
+| 0:22 | 01 Upload 8 real living-room photos |
+| 0:43 | 02 Engine picker: live balance (5,150 credits), Marble Draft 250 vs Standard 1,600 credits |
+| 1:18 | 03 Jobs with the engine recorded: draft world in 101.4 s for 250 credits; `marble-1.1` world for 1,600 credits |
+| 1:38 | 04 Walking the Marble world: WASD glide, collision stop at the wall, mouse-look, minimap, captured vs inferred pill, photo overlay, auto-tour |
+| 2:04 | 05 "What you're seeing" trust panel |
+| 2:11 | 06 Automatic fallback when the Marble key fails (`PROVIDER_AUTH`) → free depth room (86 s on CPU), walked until the wall stops you |
+| 2:34 | 07 Engineering: engine chain, 103+ tests, 8 / 8 GitHub Actions workflows green |
+| 2:53 | Honest limitations |
+| 3:02 | Outro |
 
-```bash
-cp .env.example .env          # optional: set WLT_API_KEY= to enable Marble; leave empty for the free engines only
-docker compose up --build
-# web http://localhost:3000 · API http://localhost:8000/docs · MinIO console http://localhost:9001
-```
-
-Sign up with the address in `ROOMSCAPE_BOOTSTRAP_ADMIN_EMAIL` to become platform admin. In development,
-verification and reset emails are readable at `GET /api/v1/dev/outbox?to=<email>`. The worker image bakes in COLMAP,
-ONNX Runtime 1.31.0 and Depth Anything V2 Small at a pinned Hugging Face revision (SHA-256 checked).
-
-Sample photos (Eyeful Tower, MIT):
-
-```bash
-python scripts/fetch_fixture.py eyeful_apartment_48
-python scripts/seed_demo.py --api http://localhost:8000 --images tests/fixtures/reconstruction/eyeful_apartment_48/images
-```
-
-### Local development without Docker
-
-```bash
-python -m venv .venv && . .venv/bin/activate
-pip install -e "services/reconstruction[depth]" -e "services/api[dev]" -e services/worker
-bash scripts/dev_up.sh                     # API :8000 + worker (needs Postgres, Redis, COLMAP)
-cd apps/web && pnpm install && pnpm dev    # web :3000
-```
+How it was made: every shot is real footage of the running app at 1920×1080 (Playwright, headless Chromium). The sandbox
+has no GPU, so Chromium draws the splats with SwiftShader at about 1 frame per second; the 3D scenes were therefore
+captured frame by frame through the viewer's fixed-timestep hooks (`setManual()` / `advance()`) at 15 fps and assembled
+at 30 fps, and UI scenes were screen-recorded and sped up where the video says so. No credits were spent making it: the
+Start button in the picker is only hovered. The fallback run uses the development-only
+`ROOMSCAPE_MARBLE_SIMULATE_FAILURE=auth` switch described above.
 
 ## Tests
 
