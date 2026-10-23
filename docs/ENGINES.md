@@ -10,7 +10,7 @@ records which one produced the result and why any earlier one was skipped.
 | Engine | Honesty label | Output | Cost | Needs |
 |---|---|---|---|---|
 | `marble_world`: World Labs Marble | `ai_generated` | Gaussian-splat world (SPZ 100k + 500k), collider GLB, 360° pano, thumbnail, `world.json` | World Labs credits (`marble-1.0-draft` 250, `marble-1.1` 1,600 per 8-photo world, measured) | `WLT_API_KEY` |
-| `depth_room`: free local depth room | `depth_estimated` | Textured depth mesh per photo at COLMAP poses, walk collider, `world.json` | free (CPU; 42 s for 8 photos on 2 vCPUs) | Depth Anything V2 Small ONNX (downloaded at a pinned revision, SHA-256 checked) + COLMAP |
+| `depth_room`: free local depth room | `depth_estimated` | Textured depth mesh per photo at COLMAP poses, walk collider, `world.json` | free (CPU; 42–86 s for 8 photos on 2 shared vCPUs) | Depth Anything V2 Small ONNX (downloaded at a pinned revision, SHA-256 checked) + COLMAP |
 | `colmap_sparse`: camera poses + sparse points | `reconstructed` | PLY point cloud, `cameras.json`, top-down preview | free (CPU) | COLMAP |
 | `panorama_tour` | `captured` | One node per uploaded equirectangular panorama | free | 2:1 panoramas |
 | `gaussian_splat_local` | `reconstructed` | splatfacto on COLMAP poses | free | NVIDIA GPU worker: **not available in this deployment**, always skipped |
@@ -52,9 +52,12 @@ The job stores `engine` (requested), `engine_used`, `fallback` (`{from, to, reas
 * `9fc8e78d`: `marble_world` (draft), 101 s, 250 credits.
 * `0bad6c5a`: `marble_world` (`marble-1.1`), 1,600 credits, two OOM kills of the worker, resumed without a second
   charge.
-* `d88219ac` and a rerun after the floor fix: requested `marble_world`, the key was rejected
-  (`ROOMSCAPE_MARBLE_SIMULATE_FAILURE=auth`, development only) → **fell back to `depth_room`** with reason
-  "API key invalid, expired or revoked", 42 s, no credits.
+* `d88219ac`: requested `marble_world`, the key was rejected (`ROOMSCAPE_MARBLE_SIMULATE_FAILURE=auth`, development
+  only) → **fell back to `depth_room`** with reason "API key invalid, expired or revoked", 42 s, no credits (before the
+  floor-flattening fix).
+* `8ed296df`: same fallback rerun after the floor fix: floor plane flattened in all 7 posed views (floor RMS
+  0.17–0.40 → 0.011–0.028 relative units), walking held at eye height and stopped by the collider; 86 s on a CPU
+  shared with other work, no credits.
 
 ## Viewer contract (`world.json`)
 
