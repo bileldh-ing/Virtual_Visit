@@ -2,7 +2,7 @@
 # RoomScape reconstruction worker: RQ + COLMAP (CPU build from Debian) + the free depth-room engine
 # (onnxruntime + Depth Anything V2 Small, Apache-2.0, pinned revision and sha256). Build context: repository root.
 # For GPU dense reconstruction, build FROM an NVIDIA CUDA image with a CUDA-enabled COLMAP instead.
-FROM python:3.12-slim-trixie
+FROM python:3.15-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 QT_QPA_PLATFORM=offscreen
 RUN apt-get update && apt-get install -y --no-install-recommends colmap libgl1 libglib2.0-0 curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
